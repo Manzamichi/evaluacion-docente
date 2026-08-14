@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Bloquear acceso directo a archivos ocultos
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Redirigir todo a index.php si el archivo/directorio no existe
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
