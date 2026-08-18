@@ -1,9 +1,9 @@
 -- Esquema inicial de evaluacion_docente
 
-CREATE DATABASE IF NOT EXISTS evaluacion docente
+CREATE DATABASE IF NOT EXISTS evaluacion_docente
     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE evaluacion docente;
+USE evaluacion_docente;
 
 CREATE TABLE IF NOT EXISTS usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,

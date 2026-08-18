@@ -13,7 +13,7 @@ Sistema de evaluacion docente - Servicio Social
 1. Clona el repositorio
    ```bash
    git clone <url-del-repo>
-   cd evaluacion docente
+   cd evaluacion-docente
    ```
 
 2. Copia el archivo de variables de entorno
@@ -25,7 +25,7 @@ Sistema de evaluacion docente - Servicio Social
 
 4. Importa el esquema
    ```bash
-   mysql -u root -p evaluacion docente < database/schema.sql
+   mysql -u root -p evaluacion_docente < database/schema.sql
    ```
 
 5. Levanta el servidor de desarrollo
@@ -38,7 +38,7 @@ Sistema de evaluacion docente - Servicio Social
 ## Estructura del proyecto
 
 ```
-evaluacion docente/
+evaluacion-docente/
 ├── public/       # Document root (frontend + entry point)
 ├── src/          # Lógica backend (fuera del document root)
 ├── database/     # Esquema y migraciones

@@ -5,7 +5,7 @@ declare(strict_types=1);
 function getDbConnection(): PDO
 {
     $host = getenv('DB_HOST') ?: 'localhost';
-    $db   = getenv('DB_NAME') ?: 'evaluacion docente';
+    $db   = getenv('DB_NAME') ?: 'evaluacion_docente';
     $user = getenv('DB_USER') ?: 'root';
     $pass = getenv('DB_PASS') ?: '';
     $port = getenv('DB_PORT') ?: '3306';
