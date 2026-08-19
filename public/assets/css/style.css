@@ -4,6 +4,178 @@
     padding: 0;
 }
 
+:root {
+    --borde: #d8dce3;
+    --texto: #1b1f26;
+    --suave: #667085;
+    --fondo: #f6f7f9;
+    --acento: #2b5cd9;
+    --peligro: #c0392b;
+}
+
 body {
     font-family: system-ui, sans-serif;
+    color: var(--texto);
+    background: var(--fondo);
+    line-height: 1.5;
+}
+
+.barra {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.9rem 1.5rem;
+    background: #fff;
+    border-bottom: 1px solid var(--borde);
+}
+
+.barra nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.barra a {
+    color: var(--suave);
+    text-decoration: none;
+}
+
+.barra a.activo {
+    color: var(--acento);
+    font-weight: 600;
+}
+
+main {
+    max-width: 60rem;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+
+.encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+h1 {
+    font-size: 1.4rem;
+}
+
+.tabla-scroll {
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--borde);
+    white-space: nowrap;
+}
+
+th {
+    background: #fafbfc;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--suave);
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.acciones a {
+    color: var(--acento);
+}
+
+.boton {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--acento);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+button.peligro {
+    background: none;
+    border: none;
+    color: var(--peligro);
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+}
+
+form label {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+form label span {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--suave);
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+    font: inherit;
+    background: #fff;
+}
+
+form small {
+    color: var(--suave);
+    font-size: 0.8rem;
+}
+
+.acciones-form {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.acciones-form a {
+    color: var(--suave);
+}
+
+.error {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    background: #fdecea;
+    border: 1px solid #f5c6c2;
+    border-radius: 5px;
+    color: var(--peligro);
+}
+
+.vacio {
+    padding: 2rem;
+    text-align: center;
+    color: var(--suave);
+    background: #fff;
+    border: 1px dashed var(--borde);
+    border-radius: 6px;
 }

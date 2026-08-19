@@ -2,19 +2,62 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/config/database.php';
+require_once __DIR__ . '/../src/crud.php';
 
-?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>evaluacion_docente</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body>
-    <h1>evaluacion_docente</h1>
-    <script src="assets/js/app.js"></script>
-</body>
-</html>
+session_start();
+
+$tablas = tablas();
+$tabla  = (string) ($_GET['tabla'] ?? array_key_first($tablas));
+$accion = (string) ($_GET['accion'] ?? 'listar');
+$id     = (int) ($_GET['id'] ?? 0);
+
+try {
+    $cfg = tablaConfig($tabla);
+} catch (InvalidArgumentException) {
+    http_response_code(404);
+    exit('Tabla no encontrada.');
+}
+
+$pdo      = getDbConnection();
+$error    = null;
+$registro = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verificaCsrf();
+
+    try {
+        if ($accion === 'eliminar') {
+            eliminar($pdo, $tabla, $id);
+        } else {
+            $datos = saneaEntrada($cfg, $_POST, $id === 0);
+
+            if ($id === 0) {
+                crear($pdo, $tabla, $datos);
+            } else {
+                actualizar($pdo, $tabla, $id, $datos);
+            }
+        }
+
+        header("Location: ?tabla={$tabla}");
+        exit;
+    } catch (InvalidArgumentException $e) {
+        $error    = $e->getMessage();
+        $registro = $_POST;
+    } catch (PDOException $e) {
+        $error    = 'No se pudo guardar el registro. Revisa que no haya valores duplicados.';
+        $registro = $_POST;
+    }
+}
+
+if ($accion === 'editar' && $id > 0 && $registro === []) {
+    $registro = obtener($pdo, $tabla, $id) ?? [];
+
+    if ($registro === []) {
+        http_response_code(404);
+        exit('Registro no encontrado.');
+    }
+}
+
+$filas = $accion === 'listar' ? listar($pdo, $tabla) : [];
+
+require __DIR__ . '/../src/views/crud.php';
