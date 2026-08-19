@@ -4,68 +4,42 @@ declare(strict_types=1);
 
 session_start();
 
-require_once __DIR__ . '/../src/config/database.php';
 require_once __DIR__ . '/../src/helpers/validation.php';
-require_once __DIR__ . '/../src/helpers/ldap_auth.php';
+require_once __DIR__ . '/../src/helpers/local_auth.php';
+
+// Login con AD (INET) parqueado por ahora: ver src/helpers/ldap_auth.php y
+// validarMatricula()/validarPasswordComplejidad() en validation.php para retomarlo.
+
+if (isset($_SESSION['usuario'])) {
+    header('Location: index.php');
+    exit;
+}
 
 $errores = [];
-$matriculaEnviada = '';
+$usuarioEnviado = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $matriculaEnviada = trim((string) ($_POST['matricula'] ?? ''));
+    $usuarioEnviado = trim((string) ($_POST['usuario'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
 
-    if (!validarMatricula($matriculaEnviada)) {
-        $errores[] = 'La matrícula debe tener el formato a99999999 (una letra "a" seguida de 8 números).';
+    if (!validarUsuarioGenerico($usuarioEnviado)) {
+        $errores[] = 'El usuario debe tener entre 3 y 32 caracteres (letras, números, "." o "_").';
     }
 
-    if (!validarPasswordComplejidad($password)) {
-        $errores[] = 'La contraseña debe tener al menos 8 caracteres y cumplir 3 de las 4 reglas de complejidad.';
-    }
-
-    if (empty($errores) && !autenticarContraAD($matriculaEnviada, $password)) {
-        $errores[] = 'Matrícula o contraseña incorrectas.';
+    if (!validarPasswordGenerica($password)) {
+        $errores[] = 'La contraseña debe tener entre 8 y 64 caracteres.';
     }
 
     if (empty($errores)) {
-        $correo = construirCorreoInstitucional($matriculaEnviada);
-        $pdo = getDbConnection();
-
-        $stmt = $pdo->prepare('SELECT id, nombre, correo, rol FROM usuarios WHERE correo = :correo');
-        $stmt->execute(['correo' => $correo]);
-        $usuario = $stmt->fetch();
+        $usuario = autenticarLocal($usuarioEnviado, $password);
 
         if ($usuario === false) {
-            /* El AD ya confirmó la identidad; aquí solo damos de alta el perfil/rol local.
-             password_hash no se usa para autenticar (la contraseña real vive en el AD),
-             se llena con un valor aleatorio porque la columna es NOT NULL.¨*/
-            $stmt = $pdo->prepare(
-                'INSERT INTO usuarios (nombre, correo, password_hash, rol) VALUES (:nombre, :correo, :hash, :rol)'
-            );
-            $stmt->execute([
-                'nombre' => strtoupper($matriculaEnviada),
-                'correo' => $correo,
-                'hash'   => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
-                'rol'    => 'alumno',
-            ]);
-
-            $usuario = [
-                'id'     => (int) $pdo->lastInsertId(),
-                'nombre' => strtoupper($matriculaEnviada),
-                'correo' => $correo,
-                'rol'    => 'alumno',
-            ];
+            $errores[] = 'Usuario o contraseña incorrectos.';
+        } else {
+            $_SESSION['usuario'] = $usuario;
+            header('Location: index.php');
+            exit;
         }
-
-        $_SESSION['usuario'] = [
-            'id'     => (int) $usuario['id'],
-            'nombre' => $usuario['nombre'],
-            'correo' => $usuario['correo'],
-            'rol'    => $usuario['rol'],
-        ];
-
-        header('Location: index.php');
-        exit;
     }
 }
 
@@ -81,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <main class="login-box">
         <h1>Iniciar sesión</h1>
-        <p class="login-hint">Usa tu cuenta institucional (matrícula + contraseña de INET).</p>
+        <p class="login-hint">Cuenta local de prueba (mientras no se retoma el login con AD).</p>
 
         <?php if (!empty($errores)): ?>
             <ul class="login-errores">
@@ -92,18 +66,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="post" action="login.php" novalidate>
-            <label for="matricula">Matrícula</label>
+            <label for="usuario">Usuario</label>
             <input
                 type="text"
-                id="matricula"
-                name="matricula"
-                placeholder="a22245245"
-                value="<?= htmlspecialchars($matriculaEnviada, ENT_QUOTES, 'UTF-8') ?>"
+                id="usuario"
+                name="usuario"
+                placeholder="alumno1"
+                maxlength="32"
+                value="<?= htmlspecialchars($usuarioEnviado, ENT_QUOTES, 'UTF-8') ?>"
                 required
             >
 
             <label for="password">Contraseña</label>
-            <input type="password" id="password" name="password" required>
+            <input type="password" id="password" name="password" maxlength="64" required>
 
             <button type="submit">Entrar</button>
         </form>

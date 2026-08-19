@@ -2,6 +2,25 @@
 
 declare(strict_types=1);
 
+// --- Validación genérica (login local, mientras no se retoma AD) ---
+
+function validarUsuarioGenerico(string $usuario): bool
+{
+    $usuario = trim($usuario);
+    $longitud = strlen($usuario);
+
+    return $longitud >= 3 && $longitud <= 32 && preg_match('/^[A-Za-z0-9_.]+$/', $usuario) === 1;
+}
+
+function validarPasswordGenerica(string $password): bool
+{
+    $longitud = strlen($password);
+
+    return $longitud >= 8 && $longitud <= 64;
+}
+
+// --- Validación estricta de cuentas INET (retomar cuando vuelva el login con AD) ---
+
 function validarMatricula(string $matricula): bool
 {
     return (bool) preg_match('/^a\d{8}$/', strtolower(trim($matricula)));
