@@ -179,3 +179,14 @@ form small {
     border: 1px dashed var(--borde);
     border-radius: 6px;
 }
+
+.sesion {
+    margin-left: auto;
+    font-size: 0.9rem;
+    color: var(--suave);
+}
+
+.sesion a {
+    margin-left: 0.5rem;
+    color: var(--acento);
+}

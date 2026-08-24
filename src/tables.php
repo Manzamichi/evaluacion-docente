@@ -26,8 +26,14 @@ declare(strict_types=1);
 return [
     'usuarios' => [
         'etiqueta' => 'Usuarios',
-        'listar'   => ['id', 'nombre', 'correo', 'rol', 'creado_en'],
+        'listar'   => ['id', 'usuario', 'nombre', 'correo', 'rol', 'creado_en'],
         'campos'   => [
+            'usuario' => [
+                'etiqueta'  => 'Usuario',
+                'tipo'      => 'text',
+                'requerido' => true,
+                'patron'    => 'validarUsuarioGenerico',
+            ],
             'nombre' => [
                 'etiqueta'  => 'Nombre',
                 'tipo'      => 'text',
@@ -43,6 +49,7 @@ return [
                 'tipo'      => 'password',
                 'requerido' => true,
                 'hash'      => true,
+                'patron'    => 'validarPasswordGenerica',
             ],
             'rol' => [
                 'etiqueta' => 'Rol',

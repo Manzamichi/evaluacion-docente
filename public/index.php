@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../src/helpers/auth_guard.php';
 require_once __DIR__ . '/../src/crud.php';
 
-session_start();
+// requerirSesion() abre la sesión si hace falta, así que no se llama
+// session_start() por separado.
+requerirSesion();
+requerirRol('admin');
+
+$usuario = $_SESSION['usuario'];
 
 $tablas = tablas();
 $tabla  = (string) ($_GET['tabla'] ?? array_key_first($tablas));

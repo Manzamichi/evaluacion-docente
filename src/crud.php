@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/helpers/validation.php';
 
 /**
  * Devuelve la configuración de todas las tablas declaradas en tables.php.
@@ -100,6 +101,25 @@ function eliminar(PDO $pdo, string $tabla, int $id): void
 }
 
 /**
+ * Aplica la función de validación declarada en 'patron' (definida en
+ * helpers/validation.php). Sin 'patron' no hace nada.
+ */
+function validaPatron(array $campo, string $valor): void
+{
+    if (!isset($campo['patron'])) {
+        return;
+    }
+
+    if (!is_callable($campo['patron'])) {
+        throw new LogicException("Validador inexistente: {$campo['patron']}");
+    }
+
+    if (($campo['patron'])($valor) !== true) {
+        throw new InvalidArgumentException("Formato inválido en {$campo['etiqueta']}.");
+    }
+}
+
+/**
  * Filtra el request a las columnas declaradas en tables.php y valida cada una.
  * Cualquier campo que llegue por POST y no esté declarado se descarta.
  *
@@ -120,6 +140,8 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
                 continue; // al editar, dejarlo vacío significa "no cambiar"
             }
 
+            validaPatron($campo, $valor);
+
             $datos[$col] = password_hash($valor, PASSWORD_DEFAULT);
             continue;
         }
@@ -130,6 +152,10 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
 
         if (isset($campo['opciones']) && $valor !== '' && !in_array($valor, $campo['opciones'], true)) {
             throw new InvalidArgumentException("Valor inválido en {$campo['etiqueta']}.");
+        }
+
+        if ($valor !== '') {
+            validaPatron($campo, $valor);
         }
 
         $datos[$col] = $valor === '' ? null : $valor;

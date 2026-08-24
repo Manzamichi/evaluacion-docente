@@ -42,6 +42,14 @@ foreach (tablas() as $nombre => $t) {
             <a href="<?= e($href) ?>" class="<?= $href === $activo ? 'activo' : '' ?>"><?= e($etiqueta) ?></a>
         <?php endforeach; ?>
     </nav>
+
+    <?php if (isset($_SESSION['usuario'])): ?>
+        <p class="sesion">
+            <strong><?= e($_SESSION['usuario']['nombre']) ?></strong>
+            (<?= e($_SESSION['usuario']['rol']) ?>)
+            <a href="logout.php">Cerrar sesión</a>
+        </p>
+    <?php endif; ?>
 </header>
 
 <main>
