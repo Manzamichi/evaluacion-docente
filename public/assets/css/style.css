@@ -190,3 +190,22 @@ form small {
     margin-left: 0.5rem;
     color: var(--acento);
 }
+
+.aviso {
+    max-width: 32rem;
+    margin: 4rem auto;
+    padding: 2rem;
+    text-align: center;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+}
+
+.aviso h1 {
+    margin-bottom: 0.75rem;
+}
+
+.aviso p {
+    margin-bottom: 1rem;
+    color: var(--suave);
+}
