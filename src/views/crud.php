@@ -7,6 +7,8 @@ declare(strict_types=1);
  *
  * Variables que recibe de public/index.php:
  *   $tablas $tabla $cfg $accion $id $filas $registro $error
+ *   $filtros    Búsqueda activa por columna, ya saneada
+ *   $qsFiltros  Esos filtros como cola de query string, para los enlaces
  */
 
 $titulo = $cfg['etiqueta'];
@@ -22,32 +24,65 @@ require __DIR__ . '/_header.php';
 
     <div class="encabezado">
         <h1><?= e($cfg['etiqueta']) ?></h1>
-        <a class="boton" href="?tabla=<?= e($tabla) ?>&accion=nuevo">Nuevo</a>
+        <a class="boton" href="?tabla=<?= e($tabla) ?>&accion=nuevo<?= $qsFiltros ?>">Nuevo</a>
     </div>
 
-    <?php if ($filas === []): ?>
+    <?php if ($filas === [] && $filtros === []): ?>
         <p class="vacio">Todavía no hay registros.</p>
     <?php else: ?>
+        <?php
+        // El formulario de búsqueda va vacío y fuera de la tabla; los inputs de
+        // cada encabezado se enlazan con el atributo form="busqueda". Así no
+        // queda envolviendo los formularios de "Eliminar", que no pueden ir
+        // anidados dentro de otro formulario.
+        ?>
+        <form method="get" id="busqueda">
+            <input type="hidden" name="tabla" value="<?= e($tabla) ?>">
+        </form>
+
         <div class="tabla-scroll">
             <table>
                 <thead>
                 <tr>
                     <?php foreach ($cfg['listar'] as $col): ?>
-                        <th><?= e($col) ?></th>
+                        <th>
+                            <?= e($col) ?>
+                            <input type="search"
+                                   form="busqueda"
+                                   name="f[<?= e($col) ?>]"
+                                   value="<?= e($filtros[$col] ?? '') ?>"
+                                   aria-label="Filtrar por <?= e($col) ?>">
+                        </th>
                     <?php endforeach; ?>
-                    <th>Acciones</th>
+                    <th>
+                        Acciones
+                        <span class="busqueda-acciones">
+                            <button type="submit" form="busqueda">Buscar</button>
+                            <?php if ($filtros !== []): ?>
+                                <a href="?tabla=<?= e($tabla) ?>">Limpiar</a>
+                            <?php endif; ?>
+                        </span>
+                    </th>
                 </tr>
                 </thead>
                 <tbody>
+                <?php if ($filas === []): ?>
+                    <tr>
+                        <td colspan="<?= count($cfg['listar']) + 1 ?>" class="sin-resultados">
+                            Ningún registro coincide con la búsqueda.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+
                 <?php foreach ($filas as $fila): ?>
                     <tr>
                         <?php foreach ($cfg['listar'] as $col): ?>
                             <td><?= e($fila[$col] ?? '') ?></td>
                         <?php endforeach; ?>
                         <td class="acciones">
-                            <a href="?tabla=<?= e($tabla) ?>&accion=editar&id=<?= (int) $fila['id'] ?>">Editar</a>
+                            <a href="?tabla=<?= e($tabla) ?>&accion=editar&id=<?= (int) $fila['id'] ?><?= $qsFiltros ?>">Editar</a>
                             <form method="post"
-                                  action="?tabla=<?= e($tabla) ?>&accion=eliminar&id=<?= (int) $fila['id'] ?>"
+                                  action="?tabla=<?= e($tabla) ?>&accion=eliminar&id=<?= (int) $fila['id'] ?><?= $qsFiltros ?>"
                                   onsubmit="return confirm('¿Eliminar este registro?')">
                                 <input type="hidden" name="csrf" value="<?= e(csrfToken()) ?>">
                                 <button type="submit" class="peligro">Eliminar</button>
@@ -64,7 +99,7 @@ require __DIR__ . '/_header.php';
 
     <h1><?= $id > 0 ? 'Editar' : 'Nuevo' ?> — <?= e($cfg['etiqueta']) ?></h1>
 
-    <form method="post" action="?tabla=<?= e($tabla) ?>&accion=<?= $id > 0 ? 'editar&id=' . $id : 'nuevo' ?>">
+    <form method="post" action="?tabla=<?= e($tabla) ?>&accion=<?= $id > 0 ? 'editar&id=' . $id : 'nuevo' ?><?= $qsFiltros ?>">
         <input type="hidden" name="csrf" value="<?= e(csrfToken()) ?>">
 
         <?php foreach ($cfg['campos'] as $col => $campo): ?>
@@ -100,7 +135,7 @@ require __DIR__ . '/_header.php';
 
         <div class="acciones-form">
             <button type="submit" class="boton">Guardar</button>
-            <a href="?tabla=<?= e($tabla) ?>">Cancelar</a>
+            <a href="<?= e($urlListado) ?>">Cancelar</a>
         </div>
     </form>
 

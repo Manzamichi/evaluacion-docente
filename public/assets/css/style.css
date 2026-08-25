@@ -92,6 +92,47 @@ tbody tr:last-child td {
     border-bottom: none;
 }
 
+/* El <th> va en mayúsculas y con letra chica; el input no debe heredarlo. */
+th input[type="search"] {
+    display: block;
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.9rem;
+    font-weight: normal;
+    text-transform: none;
+    color: var(--texto);
+}
+
+.busqueda-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+    text-transform: none;
+}
+
+.busqueda-acciones button {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+    background: #fff;
+    font: inherit;
+    color: var(--texto);
+    cursor: pointer;
+}
+
+.busqueda-acciones a {
+    color: var(--acento);
+}
+
+.sin-resultados {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--suave);
+    white-space: normal;
+}
+
 .acciones {
     display: flex;
     align-items: center;

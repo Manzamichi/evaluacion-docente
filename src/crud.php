@@ -46,13 +46,66 @@ function ident(string $nombre): string
     return "`{$nombre}`";
 }
 
-function listar(PDO $pdo, string $tabla): array
+/**
+ * Filtra lo que llega en $_GET['f'] a las columnas que la tabla realmente
+ * lista. Una columna que no esté en 'listar' se descarta en silencio, igual
+ * que un valor vacío (un input en blanco no debe filtrar nada).
+ */
+function filtrosDesde(array $cfg, array $entrada): array
 {
-    $cfg  = tablaConfig($tabla);
-    $cols = implode(', ', array_map('ident', $cfg['listar']));
+    $filtros = [];
+
+    foreach ($cfg['listar'] as $col) {
+        $valor = trim((string) ($entrada[$col] ?? ''));
+
+        if ($valor !== '') {
+            $filtros[$col] = $valor;
+        }
+    }
+
+    return $filtros;
+}
+
+/**
+ * Arma el WHERE de una búsqueda. Devuelve ['sql' => ..., 'valores' => [...]].
+ *
+ * Los nombres de columna pasan por ident(); los valores van siempre como
+ * marcadores. Los comodines de LIKE se escapan para que buscar "100%" o "a_b"
+ * encuentre el texto literal y no cualquier cosa.
+ */
+function clausulaWhere(array $filtros): array
+{
+    if ($filtros === []) {
+        return ['sql' => '', 'valores' => []];
+    }
+
+    $condiciones = [];
+    $valores     = [];
+
+    foreach ($filtros as $col => $valor) {
+        $condiciones[] = ident($col) . " LIKE ? ESCAPE '\\\\'";
+        $valores[]     = '%' . addcslashes($valor, '%_\\') . '%';
+    }
+
+    return [
+        'sql'     => ' WHERE ' . implode(' AND ', $condiciones),
+        'valores' => $valores,
+    ];
+}
+
+function listar(PDO $pdo, string $tabla, array $filtros = []): array
+{
+    $cfg   = tablaConfig($tabla);
+    $cols  = implode(', ', array_map('ident', $cfg['listar']));
+    $where = clausulaWhere(filtrosDesde($cfg, $filtros));
 
     // ponytail: sin paginación; agregar LIMIT/OFFSET cuando una tabla pase de unos cientos de filas
-    return $pdo->query('SELECT ' . $cols . ' FROM ' . ident($tabla) . ' ORDER BY id DESC')->fetchAll();
+    $stmt = $pdo->prepare(
+        'SELECT ' . $cols . ' FROM ' . ident($tabla) . $where['sql'] . ' ORDER BY id DESC'
+    );
+    $stmt->execute($where['valores']);
+
+    return $stmt->fetchAll();
 }
 
 function obtener(PDO $pdo, string $tabla, int $id): ?array

@@ -102,4 +102,41 @@ lanza('contraseña vacía al crear debe rechazarse', static fn () => saneaEntrad
 // Escape de HTML
 assert(e('<script>') === '&lt;script&gt;');
 
+// --- Búsqueda por columna ---
+
+// Solo pasan columnas que la tabla lista. 'password_hash' no está en 'listar',
+// así que no se puede filtrar por él aunque venga en la URL.
+$filtros = filtrosDesde($cfg, [
+    'nombre'        => 'ana',
+    'rol'           => 'docente',
+    'password_hash' => '$2y$',
+    'inventada'     => 'x',
+    'nombre` OR 1=1 --' => 'x',
+]);
+
+assert($filtros === ['nombre' => 'ana', 'rol' => 'docente']);
+
+// Los valores se recortan y los vacíos no filtran nada
+assert(filtrosDesde($cfg, ['nombre' => '  ana  ']) === ['nombre' => 'ana']);
+assert(filtrosDesde($cfg, ['nombre' => '   ']) === []);
+assert(filtrosDesde($cfg, []) === []);
+
+// Sin filtros no hay WHERE
+$vacio = clausulaWhere([]);
+assert($vacio['sql'] === '');
+assert($vacio['valores'] === []);
+
+// Un marcador por filtro, unidos con AND, y ningún valor interpolado en el SQL
+$where = clausulaWhere(['nombre' => 'ana', 'rol' => 'docente']);
+assert(substr_count($where['sql'], '?') === 2);
+assert(str_contains($where['sql'], ' AND '));
+assert(str_contains($where['sql'], '`nombre` LIKE ?'));
+assert(!str_contains($where['sql'], 'ana'));
+assert($where['valores'] === ['%ana%', '%docente%']);
+
+// Los comodines de LIKE se escapan: buscar "100%" no debe volverse un comodín
+$comodines = clausulaWhere(['nombre' => '100%_a']);
+assert($comodines['valores'] === ['%100\\%\\_a%']);
+assert(str_contains($comodines['sql'], 'ESCAPE'));
+
 echo "OK: todas las comprobaciones pasaron.\n";

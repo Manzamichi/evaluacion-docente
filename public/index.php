@@ -28,6 +28,17 @@ $pdo      = getDbConnection();
 $error    = null;
 $registro = [];
 
+// Búsqueda por columna. filtrosDesde() descarta cualquier columna que la tabla
+// no liste, así que $filtros ya viene saneado para el SQL, la vista y la URL.
+$filtros = filtrosDesde($cfg, (array) ($_GET['f'] ?? []));
+
+// El listado al que se vuelve tras guardar: conserva la búsqueda activa.
+$urlListado = '?' . http_build_query(['tabla' => $tabla, 'f' => $filtros]);
+
+// Cola para pegar a los enlaces de la vista (editar, eliminar, nuevo), de modo
+// que al terminar esa acción se regrese al listado con la búsqueda puesta.
+$qsFiltros = $filtros === [] ? '' : '&' . http_build_query(['f' => $filtros]);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificaCsrf();
 
@@ -44,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header("Location: ?tabla={$tabla}");
+        header('Location: ' . $urlListado);
         exit;
     } catch (InvalidArgumentException $e) {
         $error    = $e->getMessage();
@@ -64,6 +75,6 @@ if ($accion === 'editar' && $id > 0 && $registro === []) {
     }
 }
 
-$filas = $accion === 'listar' ? listar($pdo, $tabla) : [];
+$filas = $accion === 'listar' ? listar($pdo, $tabla, $filtros) : [];
 
 require __DIR__ . '/../src/views/crud.php';
