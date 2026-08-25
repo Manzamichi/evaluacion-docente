@@ -3,15 +3,15 @@
 declare(strict_types=1);
 
 /**
- * Configuración de las tablas del CRUD.
+ * Configuración de las tablas que atiende el CRUD genérico.
  *
  * Para dar de alta una tabla nueva:
  *   1. Créala en database/schema.sql
  *   2. Agrégala a este array
- * No hay que tocar ningún otro archivo.
+ *   3. Registra su módulo en src/modules.php y en la tabla `modulos`
  *
  * Estructura de cada tabla:
- *   etiqueta  Nombre visible en el menú y los títulos
+ *   etiqueta  Nombre visible en los títulos
  *   listar    Columnas que se muestran en la tabla del listado
  *   campos    Columnas editables desde el formulario
  *               etiqueta   Texto del <label>
@@ -19,14 +19,15 @@ declare(strict_types=1);
  *               requerido  true si no puede ir vacío
  *               opciones   Valores permitidos (solo para tipo select)
  *               hash       true para guardar con password_hash() en vez de texto plano
+ *   acciones  Enlaces extra por fila hacia otro módulo, que reciben ?id=
  *
- * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT)
- * van en 'listar' pero no en 'campos'.
+ * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
+ * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.
  */
 return [
     'usuarios' => [
         'etiqueta' => 'Usuarios',
-        'listar'   => ['id', 'usuario', 'nombre', 'correo', 'rol', 'creado_en'],
+        'listar'   => ['id', 'usuario', 'nombre', 'correo', 'creado_en'],
         'campos'   => [
             'usuario' => [
                 'etiqueta'  => 'Usuario',
@@ -51,10 +52,61 @@ return [
                 'hash'      => true,
                 'patron'    => 'validarPasswordGenerica',
             ],
-            'rol' => [
-                'etiqueta' => 'Rol',
-                'tipo'     => 'select',
-                'opciones' => ['admin', 'alumno', 'docente'],
+        ],
+        'acciones' => [
+            ['etiqueta' => 'Grupos', 'modulo' => 'usuario/grupos'],
+        ],
+    ],
+
+    'grupos' => [
+        'etiqueta' => 'Grupos',
+        // es_admin se muestra pero no se edita: darse de alta como admin desde
+        // la interfaz sería una escalada de privilegios. Se marca en la base.
+        'listar'   => ['id', 'nombre', 'descripcion', 'es_admin'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'descripcion' => [
+                'etiqueta' => 'Descripción',
+                'tipo'     => 'text',
+            ],
+        ],
+        'acciones' => [
+            ['etiqueta' => 'Permisos', 'modulo' => 'grupo/permisos'],
+            ['etiqueta' => 'Usuarios', 'modulo' => 'grupo/usuarios'],
+        ],
+    ],
+
+    'modulos' => [
+        'etiqueta' => 'Módulos',
+        'listar'   => ['id', 'nombre', 'descripcion', 'url', 'categoria', 'orden'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'descripcion' => [
+                'etiqueta' => 'Descripción',
+                'tipo'     => 'text',
+            ],
+            'url' => [
+                'etiqueta'  => 'Url',
+                'tipo'      => 'text',
+                'requerido' => true,
+                'patron'    => 'validarUrlModulo',
+            ],
+            'categoria' => [
+                'etiqueta'  => 'Categoría',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'orden' => [
+                'etiqueta' => 'Orden',
+                'tipo'     => 'number',
             ],
         ],
     ],

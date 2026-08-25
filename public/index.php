@@ -2,79 +2,71 @@
 
 declare(strict_types=1);
 
+/**
+ * Front controller. Una sola puerta de entrada:
+ *
+ *   1. Exige sesión
+ *   2. Resuelve ?m=<url> contra el registro de src/modules.php (whitelist)
+ *   3. Exige que alguno de los grupos del usuario tenga ese módulo
+ *   4. Ejecuta el módulo y envuelve su salida en el layout
+ *
+ * El módulo solo imprime su contenido: no abre ni cierra la página. Su salida
+ * se guarda en un buffer para que pueda redirigir tras un POST (header() no
+ * funciona si ya se mandó HTML) y para que pueda fijar $titulo, que el layout
+ * necesita antes de imprimir el <head>.
+ */
+
 require_once __DIR__ . '/../src/helpers/auth_guard.php';
 require_once __DIR__ . '/../src/crud.php';
+require_once __DIR__ . '/../src/components/_render.php';
 
-// requerirSesion() abre la sesión si hace falta, así que no se llama
-// session_start() por separado.
 requerirSesion();
-requerirRol('admin');
 
-$usuario = $_SESSION['usuario'];
+$m = (string) ($_GET['m'] ?? '');
 
-$tablas = tablas();
-$tabla  = (string) ($_GET['tabla'] ?? array_key_first($tablas));
-$accion = (string) ($_GET['accion'] ?? 'listar');
-$id     = (int) ($_GET['id'] ?? 0);
+// Sin módulo en la URL se manda al primero que el usuario pueda abrir.
+if ($m === '') {
+    $inicio = moduloInicial();
+
+    if ($inicio === null) {
+        http_response_code(403);
+        exit('Tu cuenta no tiene ningún módulo asignado. Pide a un administrador que te agregue a un grupo.');
+    }
+
+    header('Location: ' . urlModulo($inicio));
+    exit;
+}
 
 try {
-    $cfg = tablaConfig($tabla);
+    $mod = moduloConfig($m);
 } catch (InvalidArgumentException) {
     http_response_code(404);
-    exit('Tabla no encontrada.');
+    exit('Módulo no encontrado.');
 }
 
-$pdo      = getDbConnection();
-$error    = null;
-$registro = [];
+requerirModulo($m);
 
-// Búsqueda por columna. filtrosDesde() descarta cualquier columna que la tabla
-// no liste, así que $filtros ya viene saneado para el SQL, la vista y la URL.
-$filtros = filtrosDesde($cfg, (array) ($_GET['f'] ?? []));
+$titulo = null;
 
-// El listado al que se vuelve tras guardar: conserva la búsqueda activa.
-$urlListado = '?' . http_build_query(['tabla' => $tabla, 'f' => $filtros]);
+ob_start();
 
-// Cola para pegar a los enlaces de la vista (editar, eliminar, nuevo), de modo
-// que al terminar esa acción se regrese al listado con la búsqueda puesta.
-$qsFiltros = $filtros === [] ? '' : '&' . http_build_query(['f' => $filtros]);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verificaCsrf();
-
-    try {
-        if ($accion === 'eliminar') {
-            eliminar($pdo, $tabla, $id);
-        } else {
-            $datos = saneaEntrada($cfg, $_POST, $id === 0);
-
-            if ($id === 0) {
-                crear($pdo, $tabla, $datos);
-            } else {
-                actualizar($pdo, $tabla, $id, $datos);
-            }
-        }
-
-        header('Location: ' . $urlListado);
-        exit;
-    } catch (InvalidArgumentException $e) {
-        $error    = $e->getMessage();
-        $registro = $_POST;
-    } catch (PDOException $e) {
-        $error    = 'No se pudo guardar el registro. Revisa que no haya valores duplicados.';
-        $registro = $_POST;
-    }
+if (isset($mod['crud'])) {
+    require __DIR__ . '/../src/modules/tabla_crud.php';
+} else {
+    // El nombre sale de modules.php, nunca del request ni de la base de datos.
+    // basename() es la segunda barrera contra un ../ que se colara ahí.
+    require __DIR__ . '/../src/modules/' . basename((string) $mod['archivo']);
 }
 
-if ($accion === 'editar' && $id > 0 && $registro === []) {
-    $registro = obtener($pdo, $tabla, $id) ?? [];
+$contenido = ob_get_clean();
 
-    if ($registro === []) {
-        http_response_code(404);
-        exit('Registro no encontrado.');
-    }
-}
+componente('layout_inicio', [
+    'titulo' => $titulo ?? '',
+    // Un módulo auxiliar (permisos, usuarios del grupo) resalta el listado del
+    // que cuelga, que es el que sí está en el menú.
+    'activo' => $mod['volver'] ?? $m,
+]);
 
-$filas = $accion === 'listar' ? listar($pdo, $tabla, $filtros) : [];
+echo $contenido;
 
-require __DIR__ . '/../src/views/crud.php';
+componente('layout_fin');
