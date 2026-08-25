@@ -30,6 +30,16 @@ Sistema de evaluacion docente - Servicio Social
 
 Para bajar los contenedores: `docker compose down` (agrega `-v` solo si quieres borrar también los datos de la base).
 
+> **Si ya tenías la base creada de antes**, el esquema cambió: `usuarios.rol` se
+> reemplazó por grupos y módulos. Corre la migración una vez; conserva el acceso
+> de cada usuario pasándolo al grupo que corresponde a su rol anterior.
+> ```bash
+> docker exec -i evaluacion_docente_db mysql -uapp_user -papp_password \
+>     evaluacion_docente < database/migrations/2026-08-25_grupos_modulos.sql
+> docker exec -i evaluacion_docente_db mysql -uapp_user -papp_password \
+>     evaluacion_docente < database/seed.sql
+> ```
+
 ## Instalación manual (sin Docker)
 
 Requiere PHP >= 8.5.0 y un MariaDB/MySQL propio instalado y corriendo.
@@ -54,17 +64,47 @@ Requiere PHP >= 8.5.0 y un MariaDB/MySQL propio instalado y corriendo.
 ```
 evaluacion-docente/
 ├── public/
-│   ├── index.php        # Front controller: enruta y procesa los formularios
+│   ├── index.php          # Front controller: única puerta de entrada
+│   ├── login.php
 │   └── assets/
 ├── src/
-│   ├── tables.php       # Configuración de las tablas del CRUD
-│   ├── crud.php         # Operaciones de base de datos y helpers
-│   ├── config/          # Conexión PDO
-│   └── views/crud.php   # Listado y formulario
-├── database/            # Esquema y migraciones
-├── tests/               # Pruebas
-└── docs/                # Documentación
+│   ├── modules.php        # Registro de módulos: qué código ejecuta cada url
+│   ├── tables.php         # Configuración de las tablas del CRUD
+│   ├── crud.php           # Operaciones de base de datos y helpers
+│   ├── modules/           # Un archivo por módulo que no sea un CRUD simple
+│   ├── components/        # Piezas de interfaz reutilizables
+│   ├── helpers/           # Sesión, permisos, validación
+│   └── config/            # Conexión PDO
+├── database/              # Esquema, seed y migraciones
+├── tests/                 # Pruebas
+└── docs/                  # Documentación
 ```
+
+## Cómo funciona el control de acceso
+
+```
+usuarios  --N:N-->  grupos  --N:N-->  modulos
+```
+
+- **Módulo**: una pantalla. Su columna `url` (`grupo/admin`) es la llave.
+- **Grupo**: un rol. Un usuario puede tener varios (profesor *y* admin).
+  Un grupo con `es_admin = 1` ve todos los módulos sin asignárselos uno por uno.
+
+Tres fuentes, cada una con su responsabilidad:
+
+| Dónde | Qué decide |
+|---|---|
+| `src/modules.php` | **Qué código se ejecuta.** Es la whitelist. |
+| Tabla `modulos` | Qué módulos existen, cómo se llaman y en qué categoría del menú van. |
+| Tabla `grupos` + `grupo_modulo` | Quién los ve. |
+
+Una `url` que solo esté en la base de datos no se puede abrir ni aparece en el
+menú: **nunca se arma la ruta de un `require` con datos de la base**. Los
+permisos se consultan en cada petición, así que quitarle un módulo a un grupo
+surte efecto de inmediato, no al siguiente login.
+
+Los permisos se editan desde el módulo **Grupos > Permisos**, y los miembros
+desde **Grupos > Usuarios**.
 
 ## Agregar una tabla al CRUD
 
@@ -82,29 +122,57 @@ evaluacion-docente/
    ],
    ```
 
-Aparece sola en el menú, con su listado, alta, edición y borrado. No hay que
-tocar ningún otro archivo.
+3. Regístrala como módulo en `src/modules.php`:
+
+   ```php
+   'materia/admin' => ['crud' => 'materias'],
+   ```
+
+4. Insértala en la tabla `modulos` con esa misma url, y asígnala a los grupos
+   que deban verla:
+
+   ```sql
+   INSERT INTO modulos (nombre, url, categoria, orden)
+   VALUES ('Materias', 'materia/admin', 'Catálogos', 10);
+   ```
+
+Aparece en el menú con su listado, buscador, alta, edición y borrado. No hay que
+escribir una línea de HTML.
 
 Tipos de campo disponibles: `text`, `email`, `number`, `date`, `textarea`,
 `select` (con `opciones`) y `password` (con `hash => true`).
 
-## Agregar una vista
+Con `acciones` se agregan enlaces por fila hacia otro módulo, que reciben `?id=`:
 
-Una página = un archivo en `public/`. El `.htaccess` sirve el archivo si existe,
-así que `public/reportes.php` queda en `http://localhost:8080/reportes.php` sin
-tocar ningún router.
+```php
+'acciones' => [
+    ['etiqueta' => 'Permisos', 'modulo' => 'grupo/permisos'],
+],
+```
 
-Cada página sigue el mismo orden: primero la lógica, al final el HTML.
+El enlace solo se pinta si el usuario tiene permiso sobre ese módulo.
+
+## Agregar un módulo que no sea un CRUD
+
+Cuando la pantalla no es "listar y editar una tabla" (un reporte, el instrumento
+de evaluación), el módulo apunta a un archivo de `src/modules/`:
+
+```php
+// src/modules.php
+'reporte/general' => ['archivo' => 'reporte_general.php', 'volver' => 'reporte/general'],
+```
+
+El archivo **solo imprime su contenido**: no abre ni cierra la página. El front
+controller lo envuelve en el layout, así que puede redirigir tras un POST y
+puede fijar `$titulo`.
 
 ```php
 <?php
-// public/reportes.php
+// src/modules/reporte_general.php
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/crud.php';
-
-session_start();
+/** @var string $m */
 
 $pdo = getDbConnection();
 
@@ -112,48 +180,60 @@ $pdo = getDbConnection();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificaCsrf();
     // ... guardar, luego redirigir para que F5 no reenvíe el formulario
-    header('Location: reportes.php');
+    header('Location: ' . urlModulo($m));
     exit;
 }
 
-// 2. Consultar lo que la vista necesita. Siempre con prepare/execute.
-$stmt = $pdo->prepare('SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol');
+// 2. Consultar lo que la pantalla necesita. Siempre con prepare/execute.
+$stmt = $pdo->prepare('SELECT g.nombre, COUNT(*) AS total FROM usuario_grupo ug
+                       JOIN grupos g ON g.id = ug.grupo_id GROUP BY g.nombre');
 $stmt->execute();
 $filas = $stmt->fetchAll();
 
-// 3. Entregar a la vista.
-require __DIR__ . '/../src/views/reportes.php';
-```
-
-```php
-<?php
-// src/views/reportes.php
-
-declare(strict_types=1);
-
-/** @var array $filas */
-
-$titulo = 'Reportes';
-$activo = 'reportes.php';   // resalta el enlace en el menú
-$css    = ['reportes.css']; // opcional, public/assets/css/reportes.css
-$js     = ['reportes.js'];  // opcional, public/assets/js/reportes.js
-
-require __DIR__ . '/_header.php';
+// 3. Imprimir, apoyándose en los componentes que ya existan.
+$titulo = 'Reporte general';
 ?>
 
-<h1>Reportes</h1>
+<h1>Reporte general</h1>
 
 <ul>
     <?php foreach ($filas as $fila): ?>
-        <li><?= e($fila['rol']) ?>: <?= (int) $fila['total'] ?></li>
+        <li><?= e($fila['nombre']) ?>: <?= (int) $fila['total'] ?></li>
     <?php endforeach; ?>
 </ul>
-
-<?php require __DIR__ . '/_footer.php'; ?>
 ```
 
-Para que aparezca en el menú, agrégala al array `$navegacion` de
-`src/views/_header.php`.
+Falta insertarlo en la tabla `modulos` y asignarlo a un grupo para que aparezca.
+
+## Componentes
+
+`src/components/` guarda las piezas de interfaz. Un componente **recibe props y
+solo imprime**; no consulta la base de datos ni lee `$_GET`. Eso lo hace el
+módulo que lo llama.
+
+```php
+componente('tabla', [
+    'm'       => $m,
+    'cfg'     => $cfg,
+    'filas'   => $filas,
+    'filtros' => $filtros,
+]);
+```
+
+Los props llegan como variables sueltas dentro del componente, como los
+`@Input` de Angular. El componente **no ve ninguna otra variable**: el `require`
+va dentro de una función, así que el scope de afuera queda fuera. Si a un
+componente le falta un dato, se le pasa como prop; nunca se apoya en una
+variable que "ya andaba por ahí".
+
+| Componente | Qué pinta |
+|---|---|
+| `layout_inicio` / `layout_fin` | La página: `<head>`, barra superior, menú lateral |
+| `menu` | Los módulos que el usuario puede abrir, por categoría |
+| `tabla` | Listado con buscador por columna y acciones por fila |
+| `formulario` | Alta y edición; delega cada campo a `campo` |
+| `campo` | Un input, según el `tipo` de `tables.php` |
+| `asignador` | Una relación N:N como lista de casillas |
 
 ### Reglas que no se rompen
 
@@ -164,17 +244,21 @@ Para que aparezca en el menú, agrégala al array `$navegacion` de
 - **Nunca concatenar variables dentro del SQL.** Valores con `?` y
   `prepare()/execute()`. Nombres de tabla o columna que vengan del request, solo
   a través de la whitelist de `tables.php`.
+- **Nunca armar la ruta de un `require` con datos del request o de la base.**
+  El archivo de un módulo sale de `modules.php`, que es código.
+- **Toda pantalla nueva pasa por `requerirModulo()`**, y eso lo hace solo el
+  front controller: no hay más puertas de entrada que `public/index.php`.
 - **Después de un POST exitoso, redirigir** (patrón POST-Redirect-GET) para que
   recargar no duplique el registro.
-- La lógica va arriba del `require` de la vista; la vista solo imprime. Si una
-  vista necesita consultar la base de datos, esa consulta está en el archivo
-  equivocado.
+- La lógica va arriba, el HTML abajo. Un componente solo imprime: si necesita
+  consultar la base de datos, esa consulta está en el archivo equivocado.
 
 ### CSS y JS
 
 `style.css` y `app.js` son globales y se cargan en todas las páginas. Lo que
-solo use una página va en su propio archivo, declarado con `$css` / `$js` en la
-vista. Sin build, sin bundler: son `<link>` y `<script>` normales.
+solo use una pantalla va en su propio archivo, declarado con `$css` / `$js` al
+llamar a `layout_inicio` / `layout_fin`. Sin build, sin bundler: son `<link>` y
+`<script>` normales.
 
 Si el JS de una página crece y necesita compartir código, usa módulos nativos
 (`<script type="module">` con `import`), que funcionan en el navegador sin
