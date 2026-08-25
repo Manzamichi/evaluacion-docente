@@ -150,7 +150,120 @@ function eliminar(PDO $pdo, string $tabla, int $id): void
 {
     tablaConfig($tabla);
 
+    // Un grupo administrador es la única puerta al módulo de seguridad: si se
+    // borra el último, nadie queda con permiso para repartir permisos y el
+    // sistema solo se recupera metiendo mano a la base.
+    if ($tabla === 'grupos') {
+        $stmt = $pdo->prepare('SELECT es_admin FROM grupos WHERE id = ?');
+        $stmt->execute([$id]);
+
+        if ((int) $stmt->fetchColumn() === 1) {
+            throw new InvalidArgumentException('No se puede eliminar un grupo administrador.');
+        }
+    }
+
     $pdo->prepare('DELETE FROM ' . ident($tabla) . ' WHERE id = ?')->execute([$id]);
+}
+
+// --- Relaciones N:N (usuario_grupo, grupo_modulo) ---
+//
+// El CRUD de arriba trabaja sobre una tabla; estas tres funciones cubren las
+// tablas puente, que no tienen id propio ni formulario: se editan como una
+// lista de casillas ("estos módulos pertenecen a este grupo").
+
+/**
+ * Identificadores de un pivote, escapados. Salen de modules.php, nunca del
+ * request; ident() es la segunda barrera, igual que en el resto del archivo.
+ *
+ * @return string[] [tabla, columna propia, columna ajena]
+ */
+function pivoteIdent(array $pivote): array
+{
+    return [
+        ident($pivote['tabla']),
+        ident($pivote['propia']),
+        ident($pivote['ajena']),
+    ];
+}
+
+/**
+ * Ids del lado ajeno que ya están asignados a $id.
+ *
+ * @return int[]
+ */
+function pivoteAsignados(PDO $pdo, array $pivote, int $id): array
+{
+    [$tabla, $propia, $ajena] = pivoteIdent($pivote);
+
+    $stmt = $pdo->prepare("SELECT {$ajena} FROM {$tabla} WHERE {$propia} = ?");
+    $stmt->execute([$id]);
+
+    return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+/**
+ * Normaliza los ids que llegan del formulario: enteros, sin repetidos y sin
+ * vacíos. Un id que no exista lo rechaza después la llave foránea.
+ *
+ * @return int[]
+ */
+function pivoteIds(array $ajenos): array
+{
+    return array_values(array_unique(array_filter(array_map('intval', $ajenos))));
+}
+
+/**
+ * Deja la asignación de $id exactamente en $ajenos: borra e inserta dentro de
+ * una transacción, para que un id inválido (rechazado por la llave foránea) no
+ * deje al registro sin nada asignado.
+ */
+function pivoteGuardar(PDO $pdo, array $pivote, int $id, array $ajenos): void
+{
+    [$tabla, $propia, $ajena] = pivoteIdent($pivote);
+
+    $ajenos = pivoteIds($ajenos);
+
+    $pdo->beginTransaction();
+
+    try {
+        $pdo->prepare("DELETE FROM {$tabla} WHERE {$propia} = ?")->execute([$id]);
+
+        if ($ajenos !== []) {
+            $insert = $pdo->prepare("INSERT INTO {$tabla} ({$propia}, {$ajena}) VALUES (?, ?)");
+
+            foreach ($ajenos as $ajenoId) {
+                $insert->execute([$id, $ajenoId]);
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+
+        throw $e;
+    }
+}
+
+/**
+ * Filas del lado ajeno de un pivote, para llenar la lista de selección.
+ * Con 'agrupa' se ordena y se separa por esa columna (las categorías del menú).
+ */
+function opcionesDe(PDO $pdo, array $destino): array
+{
+    $cols  = ['id', $destino['muestra']];
+    $orden = [ident($destino['muestra'])];
+
+    if (isset($destino['agrupa'])) {
+        $cols[]  = $destino['agrupa'];
+        $orden[] = ident($destino['agrupa']);
+        $orden   = array_reverse($orden);
+    }
+
+    $sql = 'SELECT ' . implode(', ', array_map('ident', $cols))
+        . ' FROM ' . ident($destino['tabla'])
+        . ' ORDER BY ' . implode(', ', $orden);
+
+    return $pdo->query($sql)->fetchAll();
 }
 
 /**
