@@ -11,8 +11,9 @@ declare(strict_types=1);
  * No hay que tocar ningún otro archivo.
  *
  * Estructura de cada tabla:
- *   etiqueta  Nombre visible en el menú y los títulos
- *   listar    Columnas que se muestran en la tabla del listado
+ *   etiqueta   Nombre visible en el menú y los títulos
+ *   por_pagina Filas por página en el listado (opcional; por defecto FILAS_POR_PAGINA = 10)
+ *   listar     Columnas que se muestran en la tabla del listado
  *   campos    Columnas editables desde el formulario
  *               etiqueta   Texto del <label>
  *               tipo       text | email | number | date | textarea | select | password
@@ -25,8 +26,9 @@ declare(strict_types=1);
  */
 return [
     'usuarios' => [
-        'etiqueta' => 'Usuarios',
-        'listar'   => ['id', 'usuario', 'nombre', 'correo', 'rol', 'creado_en'],
+        'etiqueta'   => 'Usuarios',
+        'por_pagina' => 10,
+        'listar'     => ['id', 'usuario', 'nombre', 'correo', 'rol', 'creado_en'],
         'campos'   => [
             'usuario' => [
                 'etiqueta'  => 'Usuario',

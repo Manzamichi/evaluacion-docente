@@ -16,6 +16,7 @@ $tablas = tablas();
 $tabla  = (string) ($_GET['tabla'] ?? array_key_first($tablas));
 $accion = (string) ($_GET['accion'] ?? 'listar');
 $id     = (int) ($_GET['id'] ?? 0);
+$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
 
 try {
     $cfg = tablaConfig($tabla);
@@ -64,6 +65,10 @@ if ($accion === 'editar' && $id > 0 && $registro === []) {
     }
 }
 
-$filas = $accion === 'listar' ? listar($pdo, $tabla) : [];
+$listado = $accion === 'listar'
+    ? listar($pdo, $tabla, $pagina)
+    : ['filas' => [], 'pagina' => 1, 'paginas' => 1, 'total' => 0, 'porPagina' => 0];
+
+$filas = $listado['filas'];
 
 require __DIR__ . '/../src/views/crud.php';

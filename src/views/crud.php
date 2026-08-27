@@ -6,12 +6,14 @@ declare(strict_types=1);
  * Vista del CRUD genérico: listado o formulario según $accion.
  *
  * Variables que recibe de public/index.php:
- *   $tablas $tabla $cfg $accion $id $filas $registro $error
+ *   $tablas $tabla $cfg $accion $id $filas $listado $registro $error
  */
 
 $titulo = $cfg['etiqueta'];
 
 require __DIR__ . '/_header.php';
+
+
 ?>
 
 <?php if ($error !== null): ?>
@@ -57,6 +59,55 @@ require __DIR__ . '/_header.php';
                 <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+
+        <?php
+        $paginaActual = $listado['pagina'];
+        $totalPaginas = $listado['paginas'];
+
+        // Ventana deslizante de como máximo 3 números centrada en la página actual.
+        $ventana = 3;
+        $desde   = max(1, min($paginaActual - 1, $totalPaginas - $ventana + 1));
+        $hasta   = min($totalPaginas, $desde + $ventana - 1);
+
+        $url = static fn (int $p): string => '?tabla=' . e($tabla) . '&accion=listar&pagina=' . $p;
+
+        $primerReg = ($paginaActual - 1) * $listado['porPagina'] + 1;
+        $ultimoReg = min($primerReg + $listado['porPagina'] - 1, $listado['total']);
+        ?>
+
+        <div class="paginacion-pie">
+            <p class="paginacion-info">
+                Mostrando <?= $primerReg ?>–<?= $ultimoReg ?> de <?= $listado['total'] ?>
+            </p>
+
+            <?php if ($totalPaginas > 1): ?>
+                <nav class="paginacion" aria-label="Paginación">
+                    <?php if ($paginaActual > 1): ?>
+                        <a href="<?= $url(1) ?>" aria-label="Primera página">&laquo;</a>
+                        <a href="<?= $url($paginaActual - 1) ?>" rel="prev">&lsaquo; Anterior</a>
+                    <?php else: ?>
+                        <span class="inactiva">&laquo;</span>
+                        <span class="inactiva">&lsaquo; Anterior</span>
+                    <?php endif; ?>
+
+                    <?php for ($p = $desde; $p <= $hasta; $p++): ?>
+                        <?php if ($p === $paginaActual): ?>
+                            <span class="actual" aria-current="page"><?= $p ?></span>
+                        <?php else: ?>
+                            <a href="<?= $url($p) ?>"><?= $p ?></a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+
+                    <?php if ($paginaActual < $totalPaginas): ?>
+                        <a href="<?= $url($paginaActual + 1) ?>" rel="next">Siguiente &rsaquo;</a>
+                        <a href="<?= $url($totalPaginas) ?>" aria-label="Última página">&raquo;</a>
+                    <?php else: ?>
+                        <span class="inactiva">Siguiente &rsaquo;</span>
+                        <span class="inactiva">&raquo;</span>
+                    <?php endif; ?>
+                </nav>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
