@@ -20,6 +20,7 @@ $tabla  = (string) $mod['crud'];
 $cfg    = tablaConfig($tabla);
 $accion = (string) ($_GET['accion'] ?? 'listar');
 $id     = (int) ($_GET['id'] ?? 0);
+$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
 
 $pdo      = getDbConnection();
 $error    = null;
@@ -29,8 +30,9 @@ $registro = [];
 // no liste, así que $filtros ya viene saneado para el SQL, la vista y la URL.
 $filtros = filtrosDesde($cfg, (array) ($_GET['f'] ?? []));
 
-// El listado al que se vuelve tras guardar: conserva la búsqueda activa.
-$urlListado = urlModulo($m, ['f' => $filtros]);
+// El listado al que se vuelve tras guardar: conserva la búsqueda y la página.
+// Si al borrar la página deja de existir, listar() recorta al rango válido.
+$urlListado = urlModulo($m, ['f' => $filtros, 'pagina' => $pagina]);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificaCsrf();
@@ -70,7 +72,10 @@ if ($accion === 'editar' && $id > 0 && $registro === []) {
 
 // Un borrado que falló deja $error y hay que seguir mostrando el listado.
 $listando = $accion === 'listar' || $accion === 'eliminar';
-$filas    = $listando ? listar($pdo, $tabla, $filtros) : [];
+
+$listado = $listando
+    ? listar($pdo, $tabla, $filtros, $pagina)
+    : ['filas' => [], 'pagina' => 1, 'paginas' => 1, 'total' => 0, 'porPagina' => 0];
 
 $titulo = $cfg['etiqueta'];
 
@@ -82,7 +87,7 @@ if ($listando) {
     componente('tabla', [
         'm'       => $m,
         'cfg'     => $cfg,
-        'filas'   => $filas,
+        'listado' => $listado,
         'filtros' => $filtros,
     ]);
 } else {

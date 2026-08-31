@@ -11,24 +11,26 @@ declare(strict_types=1);
  *   3. Registra su módulo en src/modules.php y en la tabla `modulos`
  *
  * Estructura de cada tabla:
- *   etiqueta  Nombre visible en los títulos
- *   listar    Columnas que se muestran en la tabla del listado
- *   campos    Columnas editables desde el formulario
- *               etiqueta   Texto del <label>
- *               tipo       text | email | number | date | textarea | select | password
- *               requerido  true si no puede ir vacío
- *               opciones   Valores permitidos (solo para tipo select)
- *               hash       true para guardar con password_hash() en vez de texto plano
- *   acciones  Enlaces extra por fila hacia otro módulo, que reciben ?id=
+ *   etiqueta    Nombre visible en los títulos
+ *   por_pagina  Filas por página en el listado (opcional; por defecto FILAS_POR_PAGINA = 10)
+ *   listar      Columnas que se muestran en la tabla del listado
+ *   campos      Columnas editables desde el formulario
+ *                 etiqueta   Texto del <label>
+ *                 tipo       text | email | number | date | textarea | select | password
+ *                 requerido  true si no puede ir vacío
+ *                 opciones   Valores permitidos (solo para tipo select)
+ *                 hash       true para guardar con password_hash() en vez de texto plano
+ *   acciones    Enlaces extra por fila hacia otro módulo, que reciben ?id=
  *
  * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
  * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.
  */
 return [
     'usuarios' => [
-        'etiqueta' => 'Usuarios',
-        'listar'   => ['id', 'usuario', 'nombre', 'correo', 'creado_en'],
-        'campos'   => [
+        'etiqueta'   => 'Usuarios',
+        'por_pagina' => 10,
+        'listar'     => ['id', 'usuario', 'nombre', 'correo', 'creado_en'],
+        'campos'     => [
             'usuario' => [
                 'etiqueta'  => 'Usuario',
                 'tipo'      => 'text',

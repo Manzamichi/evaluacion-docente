@@ -8,9 +8,11 @@ declare(strict_types=1);
  * Props:
  *   m        string  Url del módulo, para armar los enlaces
  *   cfg      array   Configuración de la tabla (src/tables.php)
- *   filas    array[] Registros ya consultados
+ *   listado  array   Lo que devuelve listar(): filas, pagina, paginas, total...
  *   filtros  array   Búsqueda activa por columna, ya saneada
  */
+
+$filas = $listado['filas'];
 
 $acciones = array_filter(
     $cfg['acciones'] ?? [],
@@ -31,6 +33,10 @@ $acciones = array_filter(
     // cada encabezado se enlazan con el atributo form="busqueda". Así no queda
     // envolviendo los formularios de "Eliminar", que no pueden ir anidados
     // dentro de otro formulario.
+    ?>
+    <?php
+    // Sin campo 'pagina': una búsqueda nueva siempre arranca en la primera, si
+    // no se caería en una página que ya no existe con menos resultados.
     ?>
     <form method="get" id="busqueda">
         <input type="hidden" name="m" value="<?= e($m) ?>">
@@ -94,4 +100,6 @@ $acciones = array_filter(
             </tbody>
         </table>
     </div>
+
+    <?php componente('paginacion', ['m' => $m, 'filtros' => $filtros, 'listado' => $listado]); ?>
 <?php endif; ?>

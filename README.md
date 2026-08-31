@@ -142,6 +142,10 @@ escribir una línea de HTML.
 Tipos de campo disponibles: `text`, `email`, `number`, `date`, `textarea`,
 `select` (con `opciones`) y `password` (con `hash => true`).
 
+El listado se pagina solo: 10 filas por página, o las que diga `por_pagina` en
+la tabla. La búsqueda y la paginación se combinan — el conteo de páginas se hace
+sobre los resultados filtrados, y buscar de nuevo vuelve a la página 1.
+
 Con `acciones` se agregan enlaces por fila hacia otro módulo, que reciben `?id=`:
 
 ```php
@@ -231,6 +235,7 @@ variable que "ya andaba por ahí".
 | `layout_inicio` / `layout_fin` | La página: `<head>`, barra superior, menú lateral |
 | `menu` | Los módulos que el usuario puede abrir, por categoría |
 | `tabla` | Listado con buscador por columna y acciones por fila |
+| `paginacion` | Pie del listado: cuántos registros se ven y los enlaces de página |
 | `formulario` | Alta y edición; delega cada campo a `campo` |
 | `campo` | Un input, según el `tipo` de `tables.php` |
 | `asignador` | Una relación N:N como lista de casillas |

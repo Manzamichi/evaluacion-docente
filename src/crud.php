@@ -93,19 +93,78 @@ function clausulaWhere(array $filtros): array
     ];
 }
 
-function listar(PDO $pdo, string $tabla, array $filtros = []): array
+/**
+ * Filas por página cuando la tabla no define 'por_pagina' en tables.php.
+ */
+const FILAS_POR_PAGINA = 10;
+
+/**
+ * Listado de una tabla, filtrado y paginado.
+ *
+ * Devuelve un array con:
+ *   filas      Las filas de la página pedida (ya ordenadas por id DESC)
+ *   pagina     Número de página efectivo (recortado al rango válido: 1..paginas)
+ *   paginas    Total de páginas (mínimo 1, aunque no haya resultados)
+ *   total      Registros que coinciden con la búsqueda
+ *   porPagina  Filas por página aplicado
+ *
+ * El COUNT lleva el mismo WHERE que el SELECT: contar la tabla entera daría
+ * páginas de más al buscar, y la última saldría vacía.
+ */
+function listar(PDO $pdo, string $tabla, array $filtros = [], int $pagina = 1): array
 {
     $cfg   = tablaConfig($tabla);
     $cols  = implode(', ', array_map('ident', $cfg['listar']));
     $where = clausulaWhere(filtrosDesde($cfg, $filtros));
 
-    // ponytail: sin paginación; agregar LIMIT/OFFSET cuando una tabla pase de unos cientos de filas
-    $stmt = $pdo->prepare(
-        'SELECT ' . $cols . ' FROM ' . ident($tabla) . $where['sql'] . ' ORDER BY id DESC'
-    );
+    $porPagina = max(1, (int) ($cfg['por_pagina'] ?? FILAS_POR_PAGINA));
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM ' . ident($tabla) . $where['sql']);
     $stmt->execute($where['valores']);
 
-    return $stmt->fetchAll();
+    $total   = (int) $stmt->fetchColumn();
+    $paginas = max(1, (int) ceil($total / $porPagina));
+    $pagina  = max(1, min($pagina, $paginas));
+    $offset  = ($pagina - 1) * $porPagina;
+
+    $stmt = $pdo->prepare(
+        'SELECT ' . $cols . ' FROM ' . ident($tabla) . $where['sql']
+        . ' ORDER BY id DESC LIMIT ? OFFSET ?'
+    );
+
+    // LIMIT/OFFSET no aceptan marcadores en modo emulado, así que se bindean
+    // explícitamente como enteros (los valores ya son ints calculados aquí).
+    // Al mezclarlos con los de la búsqueda hay que numerar a mano: los del
+    // WHERE van primero y en el mismo orden en que se armaron.
+    $posicion = 1;
+
+    foreach ($where['valores'] as $valor) {
+        $stmt->bindValue($posicion++, $valor);
+    }
+
+    $stmt->bindValue($posicion++, $porPagina, PDO::PARAM_INT);
+    $stmt->bindValue($posicion, $offset, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return [
+        'filas'     => $stmt->fetchAll(),
+        'pagina'    => $pagina,
+        'paginas'   => $paginas,
+        'total'     => $total,
+        'porPagina' => $porPagina,
+    ];
+}
+
+/**
+ * Números de página a mostrar: una ventana deslizante centrada en la actual.
+ *
+ * @return int[]
+ */
+function ventanaPaginas(int $pagina, int $paginas, int $ventana = 3): array
+{
+    $desde = max(1, min($pagina - intdiv($ventana, 2), $paginas - $ventana + 1));
+
+    return range($desde, min($paginas, $desde + $ventana - 1));
 }
 
 function obtener(PDO $pdo, string $tabla, int $id): ?array

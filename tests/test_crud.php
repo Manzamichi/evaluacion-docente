@@ -138,6 +138,26 @@ $comodines = clausulaWhere(['nombre' => '100%_a']);
 assert($comodines['valores'] === ['%100\\%\\_a%']);
 assert(str_contains($comodines['sql'], 'ESCAPE'));
 
+// --- Paginación ---
+
+// La ventana se centra en la página actual y nunca se sale del rango.
+assert(ventanaPaginas(1, 1) === [1]);
+assert(ventanaPaginas(1, 10) === [1, 2, 3]);
+assert(ventanaPaginas(2, 10) === [1, 2, 3]);
+assert(ventanaPaginas(5, 10) === [4, 5, 6]);
+assert(ventanaPaginas(10, 10) === [8, 9, 10]);
+
+// Con menos páginas que el ancho de la ventana, se muestran solo las que hay
+assert(ventanaPaginas(1, 2) === [1, 2]);
+assert(ventanaPaginas(2, 2) === [1, 2]);
+
+// La página actual siempre aparece en la ventana
+foreach ([1, 3, 7, 12] as $paginas) {
+    for ($p = 1; $p <= $paginas; $p++) {
+        assert(in_array($p, ventanaPaginas($p, $paginas), true), "pagina {$p} de {$paginas} fuera de la ventana");
+    }
+}
+
 // --- Módulos: whitelist de código ---
 
 // Solo se puede abrir lo declarado en modules.php, aunque la base de datos

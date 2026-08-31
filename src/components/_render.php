@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Pinta un componente de src/components/.
  *
- *   componente('tabla', ['cfg' => $cfg, 'filas' => $filas]);
+ *   componente('tabla', ['cfg' => $cfg, 'listado' => $listado]);
  *
  * Los props llegan al componente como variables sueltas, como los @Input de un
  * componente de Angular. El componente no ve nada más: al hacer el require
