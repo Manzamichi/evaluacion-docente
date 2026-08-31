@@ -8,7 +8,7 @@ function autenticarLocal(string $usuario, string $password): array|false
 {
     $pdo = getDbConnection();
 
-    $stmt = $pdo->prepare('SELECT id, usuario, nombre, correo, password_hash, rol FROM usuarios WHERE usuario = :usuario');
+    $stmt = $pdo->prepare('SELECT id, usuario, nombre, correo, password_hash FROM usuarios WHERE usuario = :usuario');
     $stmt->execute(['usuario' => trim($usuario)]);
     $fila = $stmt->fetch();
 

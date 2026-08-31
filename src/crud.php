@@ -47,39 +47,103 @@ function ident(string $nombre): string
 }
 
 /**
+ * Filtra lo que llega en $_GET['f'] a las columnas que la tabla realmente
+ * lista. Una columna que no esté en 'listar' se descarta en silencio, igual
+ * que un valor vacío (un input en blanco no debe filtrar nada).
+ */
+function filtrosDesde(array $cfg, array $entrada): array
+{
+    $filtros = [];
+
+    foreach ($cfg['listar'] as $col) {
+        $valor = trim((string) ($entrada[$col] ?? ''));
+
+        if ($valor !== '') {
+            $filtros[$col] = $valor;
+        }
+    }
+
+    return $filtros;
+}
+
+/**
+ * Arma el WHERE de una búsqueda. Devuelve ['sql' => ..., 'valores' => [...]].
+ *
+ * Los nombres de columna pasan por ident(); los valores van siempre como
+ * marcadores. Los comodines de LIKE se escapan para que buscar "100%" o "a_b"
+ * encuentre el texto literal y no cualquier cosa.
+ */
+function clausulaWhere(array $filtros): array
+{
+    if ($filtros === []) {
+        return ['sql' => '', 'valores' => []];
+    }
+
+    $condiciones = [];
+    $valores     = [];
+
+    foreach ($filtros as $col => $valor) {
+        $condiciones[] = ident($col) . " LIKE ? ESCAPE '\\\\'";
+        $valores[]     = '%' . addcslashes($valor, '%_\\') . '%';
+    }
+
+    return [
+        'sql'     => ' WHERE ' . implode(' AND ', $condiciones),
+        'valores' => $valores,
+    ];
+}
+
+/**
  * Filas por página cuando la tabla no define 'por_pagina' en tables.php.
  */
 const FILAS_POR_PAGINA = 10;
 
 /**
- * Listado paginado de una tabla.
+ * Listado de una tabla, filtrado y paginado.
  *
  * Devuelve un array con:
  *   filas      Las filas de la página pedida (ya ordenadas por id DESC)
  *   pagina     Número de página efectivo (recortado al rango válido: 1..paginas)
- *   paginas    Total de páginas (mínimo 1, aunque la tabla esté vacía)
- *   total      Total de registros en la tabla
+ *   paginas    Total de páginas (mínimo 1, aunque no haya resultados)
+ *   total      Registros que coinciden con la búsqueda
  *   porPagina  Filas por página aplicado
+ *
+ * El COUNT lleva el mismo WHERE que el SELECT: contar la tabla entera daría
+ * páginas de más al buscar, y la última saldría vacía.
  */
-function listar(PDO $pdo, string $tabla, int $pagina = 1): array
+function listar(PDO $pdo, string $tabla, array $filtros = [], int $pagina = 1): array
 {
-    $cfg  = tablaConfig($tabla);
-    $cols = implode(', ', array_map('ident', $cfg['listar']));
+    $cfg   = tablaConfig($tabla);
+    $cols  = implode(', ', array_map('ident', $cfg['listar']));
+    $where = clausulaWhere(filtrosDesde($cfg, $filtros));
 
     $porPagina = max(1, (int) ($cfg['por_pagina'] ?? FILAS_POR_PAGINA));
 
-    $total   = (int) $pdo->query('SELECT COUNT(*) FROM ' . ident($tabla))->fetchColumn();
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM ' . ident($tabla) . $where['sql']);
+    $stmt->execute($where['valores']);
+
+    $total   = (int) $stmt->fetchColumn();
     $paginas = max(1, (int) ceil($total / $porPagina));
     $pagina  = max(1, min($pagina, $paginas));
     $offset  = ($pagina - 1) * $porPagina;
 
+    $stmt = $pdo->prepare(
+        'SELECT ' . $cols . ' FROM ' . ident($tabla) . $where['sql']
+        . ' ORDER BY id DESC LIMIT ? OFFSET ?'
+    );
+
     // LIMIT/OFFSET no aceptan marcadores en modo emulado, así que se bindean
     // explícitamente como enteros (los valores ya son ints calculados aquí).
-    $stmt = $pdo->prepare(
-        'SELECT ' . $cols . ' FROM ' . ident($tabla) . ' ORDER BY id DESC LIMIT ? OFFSET ?'
-    );
-    $stmt->bindValue(1, $porPagina, PDO::PARAM_INT);
-    $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+    // Al mezclarlos con los de la búsqueda hay que numerar a mano: los del
+    // WHERE van primero y en el mismo orden en que se armaron.
+    $posicion = 1;
+
+    foreach ($where['valores'] as $valor) {
+        $stmt->bindValue($posicion++, $valor);
+    }
+
+    $stmt->bindValue($posicion++, $porPagina, PDO::PARAM_INT);
+    $stmt->bindValue($posicion, $offset, PDO::PARAM_INT);
     $stmt->execute();
 
     return [
@@ -89,6 +153,18 @@ function listar(PDO $pdo, string $tabla, int $pagina = 1): array
         'total'     => $total,
         'porPagina' => $porPagina,
     ];
+}
+
+/**
+ * Números de página a mostrar: una ventana deslizante centrada en la actual.
+ *
+ * @return int[]
+ */
+function ventanaPaginas(int $pagina, int $paginas, int $ventana = 3): array
+{
+    $desde = max(1, min($pagina - intdiv($ventana, 2), $paginas - $ventana + 1));
+
+    return range($desde, min($paginas, $desde + $ventana - 1));
 }
 
 function obtener(PDO $pdo, string $tabla, int $id): ?array
@@ -133,7 +209,120 @@ function eliminar(PDO $pdo, string $tabla, int $id): void
 {
     tablaConfig($tabla);
 
+    // Un grupo administrador es la única puerta al módulo de seguridad: si se
+    // borra el último, nadie queda con permiso para repartir permisos y el
+    // sistema solo se recupera metiendo mano a la base.
+    if ($tabla === 'grupos') {
+        $stmt = $pdo->prepare('SELECT es_admin FROM grupos WHERE id = ?');
+        $stmt->execute([$id]);
+
+        if ((int) $stmt->fetchColumn() === 1) {
+            throw new InvalidArgumentException('No se puede eliminar un grupo administrador.');
+        }
+    }
+
     $pdo->prepare('DELETE FROM ' . ident($tabla) . ' WHERE id = ?')->execute([$id]);
+}
+
+// --- Relaciones N:N (usuario_grupo, grupo_modulo) ---
+//
+// El CRUD de arriba trabaja sobre una tabla; estas tres funciones cubren las
+// tablas puente, que no tienen id propio ni formulario: se editan como una
+// lista de casillas ("estos módulos pertenecen a este grupo").
+
+/**
+ * Identificadores de un pivote, escapados. Salen de modules.php, nunca del
+ * request; ident() es la segunda barrera, igual que en el resto del archivo.
+ *
+ * @return string[] [tabla, columna propia, columna ajena]
+ */
+function pivoteIdent(array $pivote): array
+{
+    return [
+        ident($pivote['tabla']),
+        ident($pivote['propia']),
+        ident($pivote['ajena']),
+    ];
+}
+
+/**
+ * Ids del lado ajeno que ya están asignados a $id.
+ *
+ * @return int[]
+ */
+function pivoteAsignados(PDO $pdo, array $pivote, int $id): array
+{
+    [$tabla, $propia, $ajena] = pivoteIdent($pivote);
+
+    $stmt = $pdo->prepare("SELECT {$ajena} FROM {$tabla} WHERE {$propia} = ?");
+    $stmt->execute([$id]);
+
+    return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+/**
+ * Normaliza los ids que llegan del formulario: enteros, sin repetidos y sin
+ * vacíos. Un id que no exista lo rechaza después la llave foránea.
+ *
+ * @return int[]
+ */
+function pivoteIds(array $ajenos): array
+{
+    return array_values(array_unique(array_filter(array_map('intval', $ajenos))));
+}
+
+/**
+ * Deja la asignación de $id exactamente en $ajenos: borra e inserta dentro de
+ * una transacción, para que un id inválido (rechazado por la llave foránea) no
+ * deje al registro sin nada asignado.
+ */
+function pivoteGuardar(PDO $pdo, array $pivote, int $id, array $ajenos): void
+{
+    [$tabla, $propia, $ajena] = pivoteIdent($pivote);
+
+    $ajenos = pivoteIds($ajenos);
+
+    $pdo->beginTransaction();
+
+    try {
+        $pdo->prepare("DELETE FROM {$tabla} WHERE {$propia} = ?")->execute([$id]);
+
+        if ($ajenos !== []) {
+            $insert = $pdo->prepare("INSERT INTO {$tabla} ({$propia}, {$ajena}) VALUES (?, ?)");
+
+            foreach ($ajenos as $ajenoId) {
+                $insert->execute([$id, $ajenoId]);
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+
+        throw $e;
+    }
+}
+
+/**
+ * Filas del lado ajeno de un pivote, para llenar la lista de selección.
+ * Con 'agrupa' se ordena y se separa por esa columna (las categorías del menú).
+ */
+function opcionesDe(PDO $pdo, array $destino): array
+{
+    $cols  = ['id', $destino['muestra']];
+    $orden = [ident($destino['muestra'])];
+
+    if (isset($destino['agrupa'])) {
+        $cols[]  = $destino['agrupa'];
+        $orden[] = ident($destino['agrupa']);
+        $orden   = array_reverse($orden);
+    }
+
+    $sql = 'SELECT ' . implode(', ', array_map('ident', $cols))
+        . ' FROM ' . ident($destino['tabla'])
+        . ' ORDER BY ' . implode(', ', $orden);
+
+    return $pdo->query($sql)->fetchAll();
 }
 
 /**

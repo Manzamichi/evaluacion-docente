@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 /**
- * Pie compartido por todas las vistas.
+ * Cierre de la página. Pareja de 'layout_inicio'.
  *
- * Variable opcional que la vista puede definir antes de incluirlo:
- *   $js  string[]  Scripts extra dentro de public/assets/js/
+ * Props:
+ *   js  string[]  Scripts extra dentro de public/assets/js/  (opcional)
  */
 ?>
-</main>
+    </main>
+</div>
 
 <script src="assets/js/app.js"></script>
 <?php foreach ($js ?? [] as $script): ?>

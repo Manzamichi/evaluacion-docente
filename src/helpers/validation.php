@@ -19,6 +19,16 @@ function validarPasswordGenerica(string $password): bool
     return $longitud >= 8 && $longitud <= 64;
 }
 
+/**
+ * Url de un módulo: "recurso/accion". Es la llave con la que la tabla `modulos`
+ * se cruza con el registro de src/modules.php, así que se mantiene con el mismo
+ * formato acotado aunque nunca se use para armar una ruta de archivo.
+ */
+function validarUrlModulo(string $url): bool
+{
+    return preg_match('#^[a-zA-Z0-9_]+(/[a-zA-Z0-9_]+)*$#', trim($url)) === 1;
+}
+
 // --- Validación estricta de cuentas INET (retomar cuando vuelva el login con AD) ---
 
 function validarMatricula(string $matricula): bool

@@ -1,30 +1,14 @@
--- Esquema de evaluacion_docente
+-- Migración: usuarios.rol (ENUM) -> grupos y módulos (N:N)
 --
--- Control de acceso:
---   usuarios  --N:N-->  grupos  --N:N-->  modulos
+-- Para una base de datos que ya tiene datos. Una instalación nueva no la
+-- necesita: database/schema.sql ya trae la estructura final.
 --
---   modulo = una pantalla del sistema. Su columna `url` es la llave que el
---            front controller busca en src/modules.php para saber qué código
---            ejecutar. Un módulo sin entrada ahí existe en el menú pero no se
---            puede abrir (404), nunca se incluye un archivo a partir de la BD.
---   grupo  = un rol. Un usuario puede tener varios (profesor + admin).
---            es_admin = 1 salta la revisión: ve todos los módulos.
+--   docker exec -i evaluacion_docente_db mysql -uapp_user -papp_password \
+--       evaluacion_docente < database/migrations/2026-08-25_grupos_modulos.sql
 
 SET NAMES utf8mb4;
 
-CREATE DATABASE IF NOT EXISTS evaluacion_docente
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 USE evaluacion_docente;
-
-CREATE TABLE IF NOT EXISTS usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    usuario VARCHAR(32) NOT NULL UNIQUE,
-    nombre VARCHAR(150) NOT NULL,
-    correo VARCHAR(150) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE IF NOT EXISTS grupos (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,3 +43,23 @@ CREATE TABLE IF NOT EXISTS grupo_modulo (
     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE,
     FOREIGN KEY (modulo_id) REFERENCES modulos(id) ON DELETE CASCADE
 );
+
+-- Un grupo por cada rol que existía en el ENUM.
+INSERT INTO grupos (nombre, descripcion, es_admin) VALUES
+    ('Administrador', 'Acceso total al sistema', 1),
+    ('Profesor', 'Personal docente', 0),
+    ('Alumno', 'Estudiantes', 0)
+ON DUPLICATE KEY UPDATE nombre = nombre;
+
+-- Cada usuario conserva su acceso: se le asigna el grupo que corresponde a su
+-- rol anterior. Se ejecuta ANTES de borrar la columna.
+INSERT IGNORE INTO usuario_grupo (usuario_id, grupo_id)
+SELECT u.id, g.id
+FROM usuarios u
+JOIN grupos g ON g.nombre = CASE u.rol
+    WHEN 'admin'   THEN 'Administrador'
+    WHEN 'docente' THEN 'Profesor'
+    WHEN 'alumno'  THEN 'Alumno'
+END;
+
+ALTER TABLE usuarios DROP COLUMN rol;

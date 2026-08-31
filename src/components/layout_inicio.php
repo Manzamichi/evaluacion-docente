@@ -3,19 +3,17 @@
 declare(strict_types=1);
 
 /**
- * Cabecera compartida por todas las vistas.
+ * Apertura de la página: <head>, barra superior y menú lateral.
+ * Se cierra con el componente 'layout_fin'.
  *
- * Variables opcionales que la vista puede definir ANTES de incluir este archivo:
- *   $titulo  string    Título de la pestaña. Por defecto el nombre del sistema.
- *   $activo  string    href del enlace del menú que va resaltado.
- *   $css     string[]  Hojas extra dentro de public/assets/css/
- *
- * Para agregar un enlace al menú que no sea una tabla del CRUD (login, reportes,
- * dashboard...), añádelo al array $navegacion de abajo.
+ * Props:
+ *   titulo  string    Título de la pestaña
+ *   activo  string    Url del módulo abierto, para resaltarlo en el menú
+ *   css     string[]  Hojas extra dentro de public/assets/css/  (opcional)
  */
 
 $titulo ??= 'evaluacion_docente';
-$activo ??= isset($_GET['tabla']) ? '?tabla=' . $_GET['tabla'] : '';
+$activo ??= '';
 
 // Versión para invalidar la caché del navegador cuando cambia una hoja de estilos.
 $assetVer = static function (string $ruta): string {
@@ -23,12 +21,6 @@ $assetVer = static function (string $ruta): string {
 
     return 'assets/css/' . $ruta . '?v=' . (is_file($abs) ? (string) filemtime($abs) : '1');
 };
-
-$navegacion = [];
-
-foreach (tablas() as $nombre => $t) {
-    $navegacion['?tabla=' . $nombre] = $t['etiqueta'];
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -43,20 +35,21 @@ foreach (tablas() as $nombre => $t) {
 </head>
 <body>
 <header class="barra">
-    <strong>evaluacion_docente</strong>
-    <nav>
-        <?php foreach ($navegacion as $href => $etiqueta): ?>
-            <a href="<?= e($href) ?>" class="<?= $href === $activo ? 'activo' : '' ?>"><?= e($etiqueta) ?></a>
-        <?php endforeach; ?>
-    </nav>
+    <strong>:: Sistema de Evaluación Docente ::</strong>
 
     <?php if (isset($_SESSION['usuario'])): ?>
         <p class="sesion">
             <strong><?= e($_SESSION['usuario']['nombre']) ?></strong>
-            (<?= e($_SESSION['usuario']['rol']) ?>)
+            <?php $grupos = gruposActuales(); ?>
+            <?php if ($grupos !== []): ?>
+                (<?= e(implode(', ', $grupos)) ?>)
+            <?php endif; ?>
             <a href="logout.php">Cerrar sesión</a>
         </p>
     <?php endif; ?>
 </header>
 
-<main>
+<div class="cuerpo">
+    <?php componente('menu', ['menu' => menuActual(), 'activo' => $activo]); ?>
+
+    <main>
