@@ -46,13 +46,49 @@ function ident(string $nombre): string
     return "`{$nombre}`";
 }
 
-function listar(PDO $pdo, string $tabla): array
+/**
+ * Filas por página cuando la tabla no define 'por_pagina' en tables.php.
+ */
+const FILAS_POR_PAGINA = 10;
+
+/**
+ * Listado paginado de una tabla.
+ *
+ * Devuelve un array con:
+ *   filas      Las filas de la página pedida (ya ordenadas por id DESC)
+ *   pagina     Número de página efectivo (recortado al rango válido: 1..paginas)
+ *   paginas    Total de páginas (mínimo 1, aunque la tabla esté vacía)
+ *   total      Total de registros en la tabla
+ *   porPagina  Filas por página aplicado
+ */
+function listar(PDO $pdo, string $tabla, int $pagina = 1): array
 {
     $cfg  = tablaConfig($tabla);
     $cols = implode(', ', array_map('ident', $cfg['listar']));
 
-    // ponytail: sin paginación; agregar LIMIT/OFFSET cuando una tabla pase de unos cientos de filas
-    return $pdo->query('SELECT ' . $cols . ' FROM ' . ident($tabla) . ' ORDER BY id DESC')->fetchAll();
+    $porPagina = max(1, (int) ($cfg['por_pagina'] ?? FILAS_POR_PAGINA));
+
+    $total   = (int) $pdo->query('SELECT COUNT(*) FROM ' . ident($tabla))->fetchColumn();
+    $paginas = max(1, (int) ceil($total / $porPagina));
+    $pagina  = max(1, min($pagina, $paginas));
+    $offset  = ($pagina - 1) * $porPagina;
+
+    // LIMIT/OFFSET no aceptan marcadores en modo emulado, así que se bindean
+    // explícitamente como enteros (los valores ya son ints calculados aquí).
+    $stmt = $pdo->prepare(
+        'SELECT ' . $cols . ' FROM ' . ident($tabla) . ' ORDER BY id DESC LIMIT ? OFFSET ?'
+    );
+    $stmt->bindValue(1, $porPagina, PDO::PARAM_INT);
+    $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return [
+        'filas'     => $stmt->fetchAll(),
+        'pagina'    => $pagina,
+        'paginas'   => $paginas,
+        'total'     => $total,
+        'porPagina' => $porPagina,
+    ];
 }
 
 function obtener(PDO $pdo, string $tabla, int $id): ?array

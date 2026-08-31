@@ -17,6 +17,13 @@ declare(strict_types=1);
 $titulo ??= 'evaluacion_docente';
 $activo ??= isset($_GET['tabla']) ? '?tabla=' . $_GET['tabla'] : '';
 
+// Versión para invalidar la caché del navegador cuando cambia una hoja de estilos.
+$assetVer = static function (string $ruta): string {
+    $abs = __DIR__ . '/../../public/assets/css/' . $ruta;
+
+    return 'assets/css/' . $ruta . '?v=' . (is_file($abs) ? (string) filemtime($abs) : '1');
+};
+
 $navegacion = [];
 
 foreach (tablas() as $nombre => $t) {
@@ -29,9 +36,9 @@ foreach (tablas() as $nombre => $t) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($titulo) ?> — evaluacion_docente</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="<?= e($assetVer('style.css')) ?>">
     <?php foreach ($css ?? [] as $hoja): ?>
-        <link rel="stylesheet" href="assets/css/<?= e($hoja) ?>">
+        <link rel="stylesheet" href="<?= e($assetVer($hoja)) ?>">
     <?php endforeach; ?>
 </head>
 <body>
