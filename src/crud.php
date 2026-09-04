@@ -67,6 +67,48 @@ function filtrosDesde(array $cfg, array $entrada): array
 }
 
 /**
+ * Columnas que el detalle nunca muestra: las que se guardan con hash y las que
+ * la tabla marque en 'ocultar'.
+ *
+ * @return string[]
+ */
+function columnasOcultas(array $cfg): array
+{
+    $ocultas = $cfg['ocultar'] ?? [];
+
+    foreach ($cfg['campos'] ?? [] as $col => $campo) {
+        if (!empty($campo['hash'])) {
+            $ocultas[] = $col;
+        }
+    }
+
+    return array_values(array_unique($ocultas));
+}
+
+/**
+ * Columnas que la tabla tiene en la base, menos las ocultas.
+ *
+ * Es lo que pide el SELECT del listado: el panel de detalle muestra más
+ * columnas de las que caben en la tabla, pero las sensibles no se filtran en la
+ * plantilla, se quedan fuera de la consulta. Un hash que nunca sale de la base
+ * no se puede escapar por una vista mal escrita.
+ *
+ * @return string[]
+ */
+function columnasDetalle(PDO $pdo, string $tabla, array $cfg): array
+{
+    static $cache = [];
+
+    if (isset($cache[$tabla])) {
+        return $cache[$tabla];
+    }
+
+    $columnas = $pdo->query('SHOW COLUMNS FROM ' . ident($tabla))->fetchAll(PDO::FETCH_COLUMN);
+
+    return $cache[$tabla] = array_values(array_diff($columnas, columnasOcultas($cfg)));
+}
+
+/**
  * Arma el WHERE de una búsqueda. Devuelve ['sql' => ..., 'valores' => [...]].
  *
  * Los nombres de columna pasan por ident(); los valores van siempre como
@@ -113,8 +155,11 @@ const FILAS_POR_PAGINA = 10;
  */
 function listar(PDO $pdo, string $tabla, array $filtros = [], int $pagina = 1): array
 {
-    $cfg   = tablaConfig($tabla);
-    $cols  = implode(', ', array_map('ident', $cfg['listar']));
+    $cfg = tablaConfig($tabla);
+
+    // Se piden las columnas del detalle, no solo las de 'listar': el panel las
+    // necesita todas y así no hace falta una segunda consulta por fila.
+    $cols  = implode(', ', array_map('ident', columnasDetalle($pdo, $tabla, $cfg)));
     $where = clausulaWhere(filtrosDesde($cfg, $filtros));
 
     $porPagina = max(1, (int) ($cfg['por_pagina'] ?? FILAS_POR_PAGINA));
