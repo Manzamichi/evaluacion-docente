@@ -6,10 +6,11 @@ declare(strict_types=1);
  * Listado de una tabla: buscador por columna, filas y acciones.
  *
  * Props:
- *   m        string  Url del módulo, para armar los enlaces
- *   cfg      array   Configuración de la tabla (src/tables.php)
- *   listado  array   Lo que devuelve listar(): filas, pagina, paginas, total...
- *   filtros  array   Búsqueda activa por columna, ya saneada
+ *   m         string    Url del módulo, para armar los enlaces
+ *   cfg       array     Configuración de la tabla (src/tables.php)
+ *   listado   array     Lo que devuelve listar(): filas, pagina, paginas, total...
+ *   filtros   array     Búsqueda activa por columna, ya saneada
+ *   columnas  string[]  Columnas que muestra el panel de detalle
  */
 
 $filas = $listado['filas'];
@@ -42,7 +43,7 @@ $acciones = array_filter(
         <input type="hidden" name="m" value="<?= e($m) ?>">
     </form>
 
-    <div class="tabla-scroll">
+    <div class="tabla-scroll" id="listado">
         <table>
             <thead>
             <tr>
@@ -82,6 +83,13 @@ $acciones = array_filter(
                         <td><?= e($fila[$col] ?? '') ?></td>
                     <?php endforeach; ?>
                     <td class="acciones">
+                        <a class="lupa" href="#detalle-<?= (int) $fila['id'] ?>" aria-label="Ver detalle del registro <?= (int) $fila['id'] ?>">
+                            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+                                <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                                <line x1="10.6" y1="10.6" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                            </svg>
+                        </a>
+
                         <a href="<?= e(urlModulo($m, ['accion' => 'editar', 'id' => $fila['id'], 'f' => $filtros])) ?>">Editar</a>
 
                         <?php foreach ($acciones as $accion): ?>
@@ -102,4 +110,12 @@ $acciones = array_filter(
     </div>
 
     <?php componente('paginacion', ['m' => $m, 'filtros' => $filtros, 'listado' => $listado]); ?>
+
+    <?php
+    // Los paneles van fuera de .tabla-scroll: ese contenedor tiene
+    // overflow-x: auto y recortaría un bloque posicionado dentro de él.
+    ?>
+    <?php foreach ($filas as $fila): ?>
+        <?php componente('detalle', ['fila' => $fila, 'cfg' => $cfg, 'columnas' => $columnas]); ?>
+    <?php endforeach; ?>
 <?php endif; ?>

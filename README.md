@@ -146,6 +146,17 @@ El listado se pagina solo: 10 filas por página, o las que diga `por_pagina` en
 la tabla. La búsqueda y la paginación se combinan — el conteo de páginas se hace
 sobre los resultados filtrados, y buscar de nuevo vuelve a la página 1.
 
+Cada fila trae un botón de lupa que abre un panel lateral con **todas** las
+columnas que la tabla tiene en la base, no solo las de `listar`. Se abre con
+`:target` de CSS: sin JavaScript y sin una petición extra, porque el listado ya
+las consultó.
+
+> **Una columna sensible se declara, o se muestra.** Las que llevan
+> `hash => true` quedan fuera solas; para el resto (tokens, CURP, RFC) está
+> `'ocultar' => ['columna']` a nivel de tabla. La exclusión ocurre en el
+> `SELECT`, no en la plantilla: lo que no sale de la base no se puede filtrar
+> por una vista mal escrita.
+
 Con `acciones` se agregan enlaces por fila hacia otro módulo, que reciben `?id=`:
 
 ```php
@@ -236,6 +247,7 @@ variable que "ya andaba por ahí".
 | `menu` | Los módulos que el usuario puede abrir, por categoría |
 | `tabla` | Listado con buscador por columna y acciones por fila |
 | `paginacion` | Pie del listado: cuántos registros se ven y los enlaces de página |
+| `detalle` | Panel lateral con el registro completo, abierto con `:target` |
 | `formulario` | Alta y edición; delega cada campo a `campo` |
 | `campo` | Un input, según el `tipo` de `tables.php` |
 | `asignador` | Una relación N:N como lista de casillas |

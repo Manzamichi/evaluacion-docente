@@ -21,6 +21,10 @@ declare(strict_types=1);
  *                 opciones   Valores permitidos (solo para tipo select)
  *                 hash       true para guardar con password_hash() en vez de texto plano
  *   acciones    Enlaces extra por fila hacia otro módulo, que reciben ?id=
+ *   ocultar     Columnas que el panel de detalle nunca muestra, porque son
+ *               sensibles (tokens, CURP, RFC). Las que ya tienen 'hash' => true
+ *               se excluyen solas. Una columna sensible se declara aquí, o se
+ *               muestra: el panel enseña todo lo que la tabla tiene en la base.
  *
  * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
  * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.

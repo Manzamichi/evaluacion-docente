@@ -85,10 +85,11 @@ if ($error !== null) {
 
 if ($listando) {
     componente('tabla', [
-        'm'       => $m,
-        'cfg'     => $cfg,
-        'listado' => $listado,
-        'filtros' => $filtros,
+        'm'        => $m,
+        'cfg'      => $cfg,
+        'listado'  => $listado,
+        'filtros'  => $filtros,
+        'columnas' => columnasDetalle($pdo, $tabla, $cfg),
     ]);
 } else {
     componente('formulario', [

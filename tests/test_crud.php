@@ -138,6 +138,31 @@ $comodines = clausulaWhere(['nombre' => '100%_a']);
 assert($comodines['valores'] === ['%100\\%\\_a%']);
 assert(str_contains($comodines['sql'], 'ESCAPE'));
 
+// --- Columnas del panel de detalle ---
+
+// La contraseña de usuarios se excluye sola por su 'hash' => true: es lo único
+// que separa un hash bcrypt del HTML que ve cualquiera con acceso al módulo.
+assert(columnasOcultas($cfg) === ['password_hash']);
+
+// Una tabla sin campos con hash ni 'ocultar' no esconde nada
+assert(columnasOcultas(tablaConfig('grupos')) === []);
+assert(columnasOcultas(tablaConfig('modulos')) === []);
+
+// 'ocultar' cubre columnas sensibles que no son contraseñas, y una columna que
+// caiga en las dos listas no se repite
+assert(columnasOcultas([
+    'ocultar' => ['token', 'curp'],
+    'campos'  => ['clave' => ['hash' => true]],
+]) === ['token', 'curp', 'clave']);
+
+assert(columnasOcultas([
+    'ocultar' => ['clave'],
+    'campos'  => ['clave' => ['hash' => true]],
+]) === ['clave']);
+
+// Sin ninguna de las dos claves no truena
+assert(columnasOcultas([]) === []);
+
 // --- Paginación ---
 
 // La ventana se centra en la página actual y nunca se sale del rango.

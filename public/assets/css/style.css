@@ -241,6 +241,75 @@ form small {
     color: var(--suave);
 }
 
+/* Panel de detalle: se abre con :target, sin JavaScript. */
+
+.lupa {
+    display: inline-flex;
+    align-items: center;
+    color: var(--suave);
+}
+
+.lupa:hover {
+    color: var(--acento);
+}
+
+.panel-detalle {
+    display: none;
+}
+
+.panel-detalle:target {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    width: min(24rem, 100%);
+    padding: 1.25rem;
+    overflow-y: auto;
+    background: #fff;
+    border-left: 1px solid var(--borde);
+    box-shadow: -4px 0 16px rgb(27 31 38 / 0.12);
+}
+
+.panel-encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.panel-encabezado h2 {
+    font-size: 1.1rem;
+}
+
+.panel-cerrar {
+    color: var(--suave);
+    font-size: 1.5rem;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.panel-cerrar:hover {
+    color: var(--peligro);
+}
+
+.panel-detalle dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--suave);
+}
+
+.panel-detalle dd {
+    margin-bottom: 0.9rem;
+    /* Un correo o un hash largo no deben ensanchar el panel. */
+    overflow-wrap: anywhere;
+}
+
 /* Asignación N:N (permisos de un grupo, usuarios de un grupo). */
 
 .asignador {
