@@ -43,7 +43,7 @@ $acciones = array_filter(
         <input type="hidden" name="m" value="<?= e($m) ?>">
     </form>
 
-    <div class="tabla-scroll" id="listado">
+    <div class="tabla-scroll">
         <table>
             <thead>
             <tr>

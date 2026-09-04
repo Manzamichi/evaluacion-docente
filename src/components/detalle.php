@@ -18,7 +18,12 @@ declare(strict_types=1);
 <aside id="detalle-<?= (int) $fila['id'] ?>" class="panel-detalle" aria-label="Detalle del registro">
     <div class="panel-encabezado">
         <h2><?= e($cfg['etiqueta']) ?> #<?= (int) $fila['id'] ?></h2>
-        <a class="panel-cerrar" href="#listado" aria-label="Cerrar detalle">&times;</a>
+        <?php
+        // "#!" no corresponde a ningún id: el navegador desactiva :target y
+        // cierra el panel, pero al no encontrar destino no mueve el scroll.
+        // Apuntar a un id real (#listado) saltaba al inicio de la tabla.
+        ?>
+        <a class="panel-cerrar" href="#!" aria-label="Cerrar detalle">&times;</a>
     </div>
 
     <dl>
