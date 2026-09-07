@@ -28,6 +28,9 @@ declare(strict_types=1);
  *
  * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
  * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.
+ *
+ * Toda tabla que se declare aquí necesita la columna `editado_por VARCHAR(32)`:
+ * crear() y actualizar() la escriben siempre, y sin ella el INSERT falla.
  */
 return [
     'usuarios' => [

@@ -222,12 +222,30 @@ function obtener(PDO $pdo, string $tabla, int $id): ?array
     return $stmt->fetch() ?: null;
 }
 
+/**
+ * Nombre de usuario de la sesión, para la columna `editado_por`.
+ *
+ * Devuelve null cuando no hay sesión (seeder, script de consola): la columna
+ * queda en NULL, que es justo lo que significa "no lo hizo nadie desde el
+ * sistema". No se toma del request nunca; solo de la sesión.
+ */
+function usuarioActual(): ?string
+{
+    return isset($_SESSION['usuario']['usuario'])
+        ? (string) $_SESSION['usuario']['usuario']
+        : null;
+}
+
 function crear(PDO $pdo, string $tabla, array $datos): void
 {
     tablaConfig($tabla);
 
-    $cols         = array_map('ident', array_keys($datos));
-    $marcadores   = array_fill(0, count($datos), '?');
+    // Se pone aquí y no en saneaEntrada() para que ningún alta pueda saltárselo:
+    // la carga masiva de CSV también pasa por esta función.
+    $datos['editado_por'] = usuarioActual();
+
+    $cols       = array_map('ident', array_keys($datos));
+    $marcadores = array_fill(0, count($datos), '?');
 
     $sql = 'INSERT INTO ' . ident($tabla)
         . ' (' . implode(', ', $cols) . ')'
@@ -239,6 +257,8 @@ function crear(PDO $pdo, string $tabla, array $datos): void
 function actualizar(PDO $pdo, string $tabla, int $id, array $datos): void
 {
     tablaConfig($tabla);
+
+    $datos['editado_por'] = usuarioActual();
 
     $asignaciones = implode(', ', array_map(
         static fn (string $col): string => ident($col) . ' = ?',
