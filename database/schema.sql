@@ -9,6 +9,12 @@
 --            puede abrir (404), nunca se incluye un archivo a partir de la BD.
 --   grupo  = un rol. Un usuario puede tener varios (profesor + admin).
 --            es_admin = 1 salta la revisión: ve todos los módulos.
+--
+-- editado_por = usuarios.usuario de quien creó o modificó el registro desde el
+--               sistema. Lo llena crud.php en cada INSERT/UPDATE. NULL significa
+--               que no pasó por la interfaz: seeder, migración o mano a la base.
+--               Es texto y no una FK a propósito: el rastro de auditoría debe
+--               sobrevivir al borrado del usuario que lo dejó.
 
 SET NAMES utf8mb4;
 
@@ -23,7 +29,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nombre VARCHAR(150) NOT NULL,
     correo VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS grupos (
@@ -31,7 +38,8 @@ CREATE TABLE IF NOT EXISTS grupos (
     nombre VARCHAR(80) NOT NULL UNIQUE,
     descripcion VARCHAR(255) NULL,
     es_admin TINYINT(1) NOT NULL DEFAULT 0,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS modulos (
@@ -41,7 +49,8 @@ CREATE TABLE IF NOT EXISTS modulos (
     url VARCHAR(120) NOT NULL UNIQUE,
     categoria VARCHAR(40) NOT NULL DEFAULT 'General',
     orden INT NOT NULL DEFAULT 0,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS usuario_grupo (
