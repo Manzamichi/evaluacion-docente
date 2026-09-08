@@ -16,6 +16,30 @@ declare(strict_types=1);
  * Un componente solo imprime. Si necesita consultar la base de datos, la
  * consulta va en el módulo que lo llama.
  */
+/**
+ * URL de un asset de public/ con ?v=<mtime>, para que el navegador vuelva a
+ * pedirlo cuando el archivo cambia y no se quede con una versión vieja en caché.
+ *
+ * La carpeta que se sirve como raíz cambia según el entorno (el Apache del
+ * contenedor publica public/ como /var/www/html; `php -S -t public` la deja
+ * tal cual), así que el archivo se busca primero bajo DOCUMENT_ROOT y, si no
+ * aparece, en la ruta del repo.
+ *
+ *   assetVer('assets/js/app.js')  =>  'assets/js/app.js?v=1712345678'
+ */
+function assetVer(string $ruta): string
+{
+    $ruta = ltrim($ruta, '/');
+
+    foreach ([($_SERVER['DOCUMENT_ROOT'] ?? '') . '/' . $ruta, __DIR__ . '/../../public/' . $ruta] as $abs) {
+        if (is_file($abs)) {
+            return $ruta . '?v=' . filemtime($abs);
+        }
+    }
+
+    return $ruta . '?v=1';
+}
+
 function componente(string $__nombre, array $__props = []): void
 {
     if (preg_match('/^[a-z0-9_]+$/', $__nombre) !== 1) {

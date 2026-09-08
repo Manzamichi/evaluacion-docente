@@ -12,9 +12,9 @@ declare(strict_types=1);
     </main>
 </div>
 
-<script src="assets/js/app.js"></script>
+<script src="<?= e(assetVer('assets/js/app.js')) ?>"></script>
 <?php foreach ($js ?? [] as $script): ?>
-    <script src="assets/js/<?= e($script) ?>"></script>
+    <script src="<?= e(assetVer('assets/js/' . $script)) ?>"></script>
 <?php endforeach; ?>
 </body>
 </html>

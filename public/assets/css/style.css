@@ -9,7 +9,17 @@
     --texto: #1b1f26;
     --suave: #667085;
     --fondo: #f6f7f9;
-    --acento: #2b5cd9;
+
+    /* Identidad institucional UADY */
+    --azul: #192e4c;          /* color principal */
+    --azul-oscuro: #0f1d31;
+    --dorado: #c89211;        /* color secundario, también destaca */
+    --dorado-oscuro: #a97a0e;
+    --dorado-tenue: #fdf6e6;  /* fondo del elemento seleccionado */
+    --azul-20: #d1d5db;       /* azul principal al 20 % sobre blanco */
+    --azul-10: #e8ebef;       /* tinte muy tenue para filas alternas */
+
+    --acento: var(--azul);    /* enlaces, botones y foco siguen el color principal */
     --peligro: #c0392b;
 }
 
@@ -23,10 +33,35 @@ body {
 .barra {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    padding: 0.9rem 1.5rem;
+    gap: 1.25rem;
+    /* Sin padding vertical: el logo ocupa todo el alto de la barra. El alto fijo
+       la mantiene delgada aunque el logo sea grande. */
+    height: 68px;
+    padding: 0 1.5rem 0 0;
+    background: var(--azul);
+    border-bottom: 3px solid var(--dorado);
+}
+
+/* Escudo/lockup de la UADY sobre una placa blanca a la izquierda: topa arriba y
+   abajo y queda legible sobre el azul. El min-width reserva el espacio aunque la
+   imagen todavía no cargue. */
+.barra-logo {
+    flex: 0 0 auto;
+    align-self: stretch;
+    height: 100%;
+    width: auto;
+    min-width: 130px;
+    padding: 6px 1.25rem;
     background: #fff;
-    border-bottom: 1px solid var(--borde);
+    object-fit: contain;
+    object-position: center;
+}
+
+.barra-titulo {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--dorado);
 }
 
 /* Menú lateral: los módulos que el usuario puede abrir, por categoría. */
@@ -46,12 +81,12 @@ body {
 
 .lateral h2 {
     padding: 0.45rem 1.25rem;
-    background: #f0f2f5;
+    background: var(--azul-20);
     border-bottom: 1px solid var(--borde);
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--suave);
+    color: var(--azul);
 }
 
 .lateral nav {
@@ -72,9 +107,9 @@ body {
 }
 
 .lateral a.activo {
-    background: var(--fondo);
-    box-shadow: inset 3px 0 0 var(--acento);
-    color: var(--acento);
+    background: var(--dorado-tenue);
+    box-shadow: inset 3px 0 0 var(--dorado);
+    color: var(--dorado-oscuro);
     font-weight: 600;
 }
 
@@ -120,10 +155,26 @@ td {
 }
 
 th {
-    background: #fafbfc;
+    background: var(--azul);
     font-size: 0.8rem;
     text-transform: uppercase;
-    color: var(--suave);
+    color: #fff;
+}
+
+/* El resto de la tabla en un azul tenue: filas alternas al ~10 % y la fila
+   bajo el cursor al 20 %. */
+tbody tr:nth-child(even) td {
+    background: var(--azul-10);
+}
+
+tbody tr:hover td {
+    background: var(--azul-20);
+}
+
+/* Enlaces dentro del encabezado azul (p. ej. "Limpiar"): en dorado para que
+   contrasten sobre el fondo oscuro. */
+th .busqueda-acciones a {
+    color: var(--dorado);
 }
 
 tbody tr:last-child td {
@@ -310,44 +361,107 @@ form small {
     overflow-wrap: anywhere;
 }
 
-/* Asignación N:N (permisos de un grupo, usuarios de un grupo). */
+/* Asignación N:N (permisos de un grupo, usuarios de un grupo): dual list box. */
 
-.asignador {
-    padding: 0.5rem 1.25rem 1.25rem;
+.dualbox {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1.5rem;
+}
+
+.dualbox-titulo {
+    margin-bottom: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--suave);
+}
+
+.dualbox-lista {
+    height: 20rem;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0.25rem;
     background: #fff;
     border: 1px solid var(--borde);
     border-radius: 6px;
 }
 
-.asignador legend {
-    padding: 0 0.4rem;
-    font-weight: 600;
+.dualbox-lista--sobre {
+    border-color: var(--acento);
+    box-shadow: inset 0 0 0 1px var(--acento);
 }
 
-.asignador h2 {
-    margin: 1rem 0 0.4rem;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    color: var(--suave);
-}
-
-.asignador-lista {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-    gap: 0.25rem 1rem;
-}
-
-.asignador-lista label {
+.dualbox-item {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
     font-size: 0.95rem;
+    cursor: grab;
+    user-select: none;
 }
 
-/* Los inputs son width: 100% por defecto; una casilla no. */
-.asignador-lista input[type="checkbox"] {
-    width: auto;
+.dualbox-item:hover {
+    background: var(--fondo);
+}
+
+.dualbox-item.sel {
+    background: var(--dorado);
+    color: #fff;
+}
+
+.dualbox-cat {
+    font-size: 0.75rem;
+    color: var(--suave);
+    white-space: nowrap;
+}
+
+.dualbox-item.sel .dualbox-cat {
+    color: #fbe7c6;
+}
+
+.dualbox-flechas {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.5rem;
+    /* Alinea los botones con el alto de las listas, no con el título. */
+    padding-top: calc(0.8rem + 1.6rem);
+}
+
+.dualbox-flechas button {
+    width: 2.5rem;
+    padding: 0.35rem 0;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: var(--texto);
+    cursor: pointer;
+}
+
+.dualbox-flechas button:hover {
+    border-color: var(--acento);
+    color: var(--acento);
+}
+
+@media (max-width: 640px) {
+    .dualbox {
+        grid-template-columns: 1fr;
+    }
+
+    .dualbox-flechas {
+        flex-direction: row;
+        justify-content: center;
+        padding-top: 0;
+    }
 }
 
 .error {
@@ -371,12 +485,16 @@ form small {
 .sesion {
     margin-left: auto;
     font-size: 0.9rem;
-    color: var(--suave);
+    color: rgb(255 255 255 / 0.75);
+}
+
+.sesion strong {
+    color: #fff;
 }
 
 .sesion a {
     margin-left: 0.5rem;
-    color: var(--acento);
+    color: var(--dorado);
 }
 
 .aviso {
