@@ -201,6 +201,197 @@ function listar(PDO $pdo, string $tabla, array $filtros = [], int $pagina = 1): 
 }
 
 /**
+ * Todas las filas que coinciden con la búsqueda, sin paginar, para exportarlas.
+ *
+ * Devuelve el statement en vez de un array: el CSV se escribe fila por fila, así
+ * que una tabla grande no tiene por qué caber entera en memoria.
+ *
+ * Pide las mismas columnas que el listado, o sea columnasDetalle(): las que
+ * llevan 'hash' o están en 'ocultar' se quedan fuera del SELECT y por lo tanto
+ * tampoco pueden salir en el archivo.
+ */
+function exportarFilas(PDO $pdo, string $tabla, array $filtros = []): PDOStatement
+{
+    $cfg = tablaConfig($tabla);
+
+    $cols  = implode(', ', array_map('ident', columnasDetalle($pdo, $tabla, $cfg)));
+    $where = clausulaWhere(filtrosDesde($cfg, $filtros));
+
+    $stmt = $pdo->prepare(
+        'SELECT ' . $cols . ' FROM ' . ident($tabla) . $where['sql'] . ' ORDER BY id DESC'
+    );
+    $stmt->execute($where['valores']);
+
+    return $stmt;
+}
+
+/**
+ * Tope de filas de una importación. Un archivo más grande se rechaza entero en
+ * vez de dejar la petición corriendo hasta que se acabe el tiempo o la memoria.
+ */
+const MAX_FILAS_CSV = 5000;
+
+/**
+ * Lee un CSV y devuelve sus filas indexadas por columna.
+ *
+ * La primera línea es el encabezado y decide qué columna es cada una. Las que no
+ * estén en $columnas se ignoran (es la whitelist, igual que 'campos' para el
+ * formulario), y las líneas en blanco se saltan: un archivo de Excel casi
+ * siempre trae una al final.
+ *
+ * Solo texto: ni base de datos ni validación. Lo que salga de aquí todavía tiene
+ * que pasar por saneaEntrada().
+ *
+ * @param  string[] $columnas Columnas aceptadas
+ * @return array<int, array{linea: int, datos: array<string, string>}>
+ * @throws InvalidArgumentException si el archivo no se puede leer, no trae
+ *                                  encabezado o excede MAX_FILAS_CSV
+ */
+function leerCsv(string $ruta, array $columnas): array
+{
+    $manejador = @fopen($ruta, 'r');
+
+    if ($manejador === false) {
+        throw new InvalidArgumentException('No se pudo leer el archivo.');
+    }
+
+    try {
+        // El escape se pasa vacío a propósito: es el valor que PHP tomará por
+        // defecto y además el correcto. La barra invertida como escape es una
+        // invención de PHP que no está en el formato CSV, y con ella una ruta
+        // de Windows o un LIKE con "\\" dentro de una celda se leen mal.
+        $encabezado = fgetcsv($manejador, null, ',', '"', '');
+
+        if ($encabezado === false || $encabezado === [null]) {
+            throw new InvalidArgumentException('El archivo está vacío.');
+        }
+
+        // Excel guarda el CSV con BOM: sin quitarlo la primera columna se
+        // llamaría "\xEF\xBB\xBFnombre" y no coincidiría con ninguna.
+        $encabezado[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $encabezado[0]);
+
+        $mapa = [];
+
+        foreach ($encabezado as $posicion => $nombre) {
+            $nombre = trim((string) $nombre);
+
+            if (in_array($nombre, $columnas, true)) {
+                $mapa[$posicion] = $nombre;
+            }
+        }
+
+        if ($mapa === []) {
+            throw new InvalidArgumentException(
+                'El encabezado no trae ninguna columna conocida. Se esperaba: ' . implode(', ', $columnas) . '.'
+            );
+        }
+
+        $filas = [];
+        $linea = 1;
+
+        while (($fila = fgetcsv($manejador, null, ',', '"', '')) !== false) {
+            $linea++;
+
+            // fgetcsv devuelve [null] en una línea vacía.
+            if ($fila === [null] || implode('', array_map('strval', $fila)) === '') {
+                continue;
+            }
+
+            if (count($filas) >= MAX_FILAS_CSV) {
+                throw new InvalidArgumentException(
+                    'El archivo trae más de ' . MAX_FILAS_CSV . ' filas. Divídelo en varias partes.'
+                );
+            }
+
+            $datos = [];
+
+            foreach ($mapa as $posicion => $nombre) {
+                $datos[$nombre] = (string) ($fila[$posicion] ?? '');
+            }
+
+            $filas[] = ['linea' => $linea, 'datos' => $datos];
+        }
+
+        return $filas;
+    } finally {
+        fclose($manejador);
+    }
+}
+
+/**
+ * Tamaño máximo de un CSV subido. Por encima se rechaza sin abrirlo.
+ */
+const MAX_BYTES_CSV = 2 * 1024 * 1024;
+
+/**
+ * Da de alta en bloque los registros de un CSV subido.
+ *
+ * Todo o nada: las altas van dentro de una transacción y basta que una fila no
+ * pase la validación para deshacer la carga entera. Una importación a medias es
+ * peor que una fallida — nadie sabría en qué fila se quedó.
+ *
+ * Cada fila pasa por saneaEntrada(), la misma validación del formulario, y por
+ * crear(), que escribe `editado_por` sola. No hay atajo por ser carga masiva.
+ *
+ * @param  array    $archivo Entrada de $_FILES
+ * @return string[] Errores encontrados; vacío si se importó todo
+ */
+function importarCsv(PDO $pdo, string $tabla, array $cfg, array $archivo): array
+{
+    $error = (int) ($archivo['error'] ?? UPLOAD_ERR_NO_FILE);
+
+    if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
+        return ['El archivo es demasiado grande.'];
+    }
+
+    if ($error !== UPLOAD_ERR_OK) {
+        return ['No se recibió ningún archivo. Vuelve a intentarlo.'];
+    }
+
+    $ruta = (string) ($archivo['tmp_name'] ?? '');
+
+    // Sin esto, un tmp_name manipulado podría apuntar a cualquier archivo del
+    // servidor y volcarlo a la base de datos.
+    if (!is_uploaded_file($ruta)) {
+        return ['El archivo no se subió correctamente.'];
+    }
+
+    if ((int) ($archivo['size'] ?? 0) > MAX_BYTES_CSV) {
+        return ['El archivo pasa de ' . (int) (MAX_BYTES_CSV / 1024 / 1024) . ' MB. Divídelo en varias partes.'];
+    }
+
+    try {
+        $filas = leerCsv($ruta, array_keys($cfg['campos']));
+    } catch (InvalidArgumentException $e) {
+        return [$e->getMessage()];
+    }
+
+    if ($filas === []) {
+        return ['El archivo no trae ninguna fila con datos.'];
+    }
+
+    $pdo->beginTransaction();
+
+    try {
+        foreach ($filas as $fila) {
+            crear($pdo, $tabla, saneaEntrada($cfg, $fila['datos'], true));
+        }
+
+        $pdo->commit();
+
+        return [];
+    } catch (InvalidArgumentException $e) {
+        $pdo->rollBack();
+
+        return ["Línea {$fila['linea']}: {$e->getMessage()}"];
+    } catch (PDOException) {
+        $pdo->rollBack();
+
+        return ["Línea {$fila['linea']}: la base de datos rechazó el registro. Revisa que no haya valores duplicados."];
+    }
+}
+
+/**
  * Números de página a mostrar: una ventana deslizante centrada en la actual.
  *
  * @return int[]

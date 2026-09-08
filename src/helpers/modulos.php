@@ -130,11 +130,41 @@ function puede(string $url): bool
 }
 
 /**
+ * Acciones de un módulo: las que no dependen de ningún registro y por eso
+ * cuelgan de él en el menú lateral en vez de repetirse en cada fila de la tabla.
+ *
+ * Salen de la clave 'acciones' de src/modules.php. Una acción con 'params' va al
+ * mismo módulo; una con 'modulo' va a otro y se descarta si el usuario no tiene
+ * permiso sobre él, igual que los enlaces por registro del listado.
+ *
+ * @return array<int, array{etiqueta: string, href: string}>
+ */
+function accionesDeModulo(string $url): array
+{
+    $acciones = [];
+
+    foreach (modulos()[$url]['acciones'] ?? [] as $accion) {
+        $destino = $accion['modulo'] ?? $url;
+
+        if (isset($accion['modulo']) && !puede($destino)) {
+            continue;
+        }
+
+        $acciones[] = [
+            'etiqueta' => (string) $accion['etiqueta'],
+            'href'     => urlModulo($destino, $accion['params'] ?? []),
+        ];
+    }
+
+    return $acciones;
+}
+
+/**
  * Módulos que el usuario puede ver, agrupados por categoría y en el orden de la
  * columna `orden`. Se descartan los que no tienen código registrado (enlaces
  * rotos) y los marcados 'oculto' (necesitan un ?id= para tener sentido).
  *
- * @return array<string, array<int, array{nombre: string, url: string}>>
+ * @return array<string, array<int, array{nombre: string, url: string, acciones: array}>>
  */
 function menuActual(): array
 {
@@ -153,8 +183,9 @@ function menuActual(): array
         }
 
         $menu[(string) $fila['categoria']][] = [
-            'nombre' => (string) $fila['nombre'],
-            'url'    => $url,
+            'nombre'   => (string) $fila['nombre'],
+            'url'      => $url,
+            'acciones' => accionesDeModulo($url),
         ];
     }
 

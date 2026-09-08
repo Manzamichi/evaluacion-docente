@@ -15,10 +15,13 @@ declare(strict_types=1);
 
 $filas = $listado['filas'];
 
-$acciones = array_filter(
+// Los enlaces por registro no van en la fila: se pintan al pie del panel de
+// detalle, que ya tiene el registro en contexto. La celda de acciones se queda
+// solo con lo típico (ver, editar, eliminar) y no crece con cada módulo nuevo.
+$acciones = array_values(array_filter(
     $cfg['acciones'] ?? [],
     static fn (array $accion): bool => puede($accion['modulo'])
-);
+));
 ?>
 
 <div class="encabezado">
@@ -92,10 +95,6 @@ $acciones = array_filter(
 
                         <a href="<?= e(urlModulo($m, ['accion' => 'editar', 'id' => $fila['id'], 'f' => $filtros])) ?>">Editar</a>
 
-                        <?php foreach ($acciones as $accion): ?>
-                            <a href="<?= e(urlModulo($accion['modulo'], ['id' => $fila['id']])) ?>"><?= e($accion['etiqueta']) ?></a>
-                        <?php endforeach; ?>
-
                         <form method="post"
                               action="<?= e(urlModulo($m, ['accion' => 'eliminar', 'id' => $fila['id'], 'f' => $filtros])) ?>"
                               onsubmit="return confirm('¿Eliminar este registro?')">
@@ -116,6 +115,11 @@ $acciones = array_filter(
     // overflow-x: auto y recortaría un bloque posicionado dentro de él.
     ?>
     <?php foreach ($filas as $fila): ?>
-        <?php componente('detalle', ['fila' => $fila, 'cfg' => $cfg, 'columnas' => $columnas]); ?>
+        <?php componente('detalle', [
+            'fila'     => $fila,
+            'cfg'      => $cfg,
+            'columnas' => $columnas,
+            'acciones' => $acciones,
+        ]); ?>
     <?php endforeach; ?>
 <?php endif; ?>

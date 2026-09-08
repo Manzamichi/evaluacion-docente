@@ -12,11 +12,30 @@ declare(strict_types=1);
  *   $mod  array   Su configuración: sujeto, pivote, destino, volver
  */
 
+/** @var string $m */
 /** @var array $mod */
 
 $id = (int) ($_GET['id'] ?? 0);
 
-$pdo    = getDbConnection();
+$pdo = getDbConnection();
+
+// Sin ?id= no se sabe a quién se le asigna. Pasa cuando se entra desde el menú
+// lateral, donde no hay ninguna fila elegida: se pregunta primero y se vuelve
+// aquí con el id. Desde el panel de detalle el registro ya viene en el enlace.
+if ($id === 0) {
+    $titulo = $mod['titulo'];
+
+    componente('selector', [
+        'titulo'   => $mod['titulo'],
+        'm'        => $m,
+        'opciones' => opcionesDe($pdo, $mod['sujeto']),
+        'muestra'  => $mod['sujeto']['muestra'],
+        'volver'   => $mod['volver'],
+    ]);
+
+    return;
+}
+
 $sujeto = obtener($pdo, $mod['sujeto']['tabla'], $id);
 
 if ($sujeto === null) {

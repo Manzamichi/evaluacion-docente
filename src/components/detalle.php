@@ -10,6 +10,8 @@ declare(strict_types=1);
  *   fila      array     El registro, tal como lo devolvió listar()
  *   cfg       array     Configuración de la tabla (src/tables.php)
  *   columnas  string[]  Columnas a mostrar, de columnasDetalle()
+ *   acciones  array     Enlaces a otros módulos para este registro, ya filtrados
+ *                       por permiso: [['etiqueta' => ..., 'modulo' => ...], ...]
  *
  * Las columnas sensibles no llegan hasta aquí: columnasDetalle() las deja fuera
  * del SELECT.
@@ -35,4 +37,12 @@ declare(strict_types=1);
             </dd>
         <?php endforeach; ?>
     </dl>
+
+    <?php if ($acciones !== []): ?>
+        <div class="panel-acciones">
+            <?php foreach ($acciones as $accion): ?>
+                <a href="<?= e(urlModulo($accion['modulo'], ['id' => $fila['id']])) ?>"><?= e($accion['etiqueta']) ?></a>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </aside>

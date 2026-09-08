@@ -226,4 +226,75 @@ lanza('pivote con inyección debe rechazarse', static fn () => pivoteIdent(
 assert(pivoteIds(['3', '1', '3', '', '0', 'x']) === [3, 1]);
 assert(pivoteIds([]) === []);
 
+// --- Acciones de módulo (menú lateral) ---
+
+// Las que apuntan al mismo módulo con 'params' no consultan permisos, así que
+// se pueden comprobar sin base de datos ni sesión.
+$acciones = accionesDeModulo('grupo/admin');
+assert($acciones[0] === ['etiqueta' => 'Exportar CSV', 'href' => '?m=grupo/admin&accion=exportar']);
+assert($acciones[1]['href'] === '?m=grupo/admin&accion=importar');
+
+// Solo salen las de 'params': las que apuntan a otro módulo pasan por puede(),
+// y sin sesión no hay permiso que valga. Que se pinten o no es cosa de quien
+// mire el menú, no de la declaración.
+assert(count($acciones) === 2);
+
+// Las de otro módulo entran sin ?id= a propósito: la pantalla pregunta primero
+// sobre qué registro se trabaja. El atajo con el id ya puesto vive en el panel
+// de detalle.
+$aOtroModulo = array_column(moduloConfig('grupo/admin')['acciones'], 'modulo');
+assert($aOtroModulo === ['grupo/permisos', 'grupo/usuarios']);
+
+// Una acción que apunta a otro módulo tiene que existir en la whitelist, o el
+// enlace del menú llevaría a un 404
+foreach (modulos() as $url => $mod) {
+    foreach ($mod['acciones'] ?? [] as $accion) {
+        assert(isset($accion['etiqueta']), "acción sin etiqueta en {$url}");
+        assert(isset($accion['params']) !== isset($accion['modulo']),
+            "acción sin destino o con dos en {$url}: {$accion['etiqueta']}");
+
+        if (isset($accion['modulo'])) {
+            moduloConfig($accion['modulo']); // lanza si no está declarado
+        }
+    }
+}
+
+// Un módulo sin acciones declaradas no ensucia el menú con un desplegable vacío
+assert(accionesDeModulo('grupo/permisos') === []);
+assert(accionesDeModulo('modulo/inexistente') === []);
+
+// Importar solo donde se declaró: usuario/admin exporta pero no importa
+$declaradas = array_column(array_column(moduloConfig('usuario/admin')['acciones'], 'params'), 'accion');
+assert(in_array('exportar', $declaradas, true));
+assert(!in_array('importar', $declaradas, true));
+
+// --- Lectura de un CSV ---
+
+$ruta = tempnam(sys_get_temp_dir(), 'csv');
+
+// Con BOM (como lo guarda Excel), una columna no declarada y una línea en blanco
+file_put_contents($ruta, "\xEF\xBB\xBFnombre,es_admin,descripcion\n"
+    . "Profesores,1,Imparten clase\n"
+    . "\n"
+    . "Alumnos,0,Contestan la evaluacion\n");
+
+$filas = leerCsv($ruta, ['nombre', 'descripcion']);
+
+assert(count($filas) === 2, 'la línea en blanco no debe contar como fila');
+assert($filas[0]['datos'] === ['nombre' => 'Profesores', 'descripcion' => 'Imparten clase'],
+    'el BOM debe quitarse y es_admin debe ignorarse');
+// La línea se reporta tal como la ve quien abre el archivo, contando el encabezado
+assert($filas[0]['linea'] === 2);
+assert($filas[1]['linea'] === 4);
+
+// Un encabezado sin ninguna columna conocida no se importa "a medias": se rechaza
+file_put_contents($ruta, "columna_rara,otra\nx,y\n");
+lanza('encabezado sin columnas conocidas debe rechazarse',
+    static fn () => leerCsv($ruta, ['nombre', 'descripcion']));
+
+file_put_contents($ruta, '');
+lanza('archivo vacío debe rechazarse', static fn () => leerCsv($ruta, ['nombre']));
+
+unlink($ruta);
+
 echo "OK: todas las comprobaciones pasaron.\n";
