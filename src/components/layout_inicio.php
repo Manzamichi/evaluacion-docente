@@ -28,6 +28,13 @@ $activo ??= '';
 </head>
 <body>
 <header class="barra">
+    <?php
+    // Un <a>, no un <label> con checkbox: recibe foco con Tab y se activa con
+    // Enter sin JavaScript. Solo se ve en móvil; el menú se abre con :target y
+    // se cierra solo al navegar, porque la recarga se lleva el fragmento.
+    ?>
+    <a class="menu-boton" href="#lateral" aria-label="Abrir menú">&#9776;</a>
+
     <img class="barra-logo"
          src="<?= e(assetVer('assets/img/logo-uady.png')) ?>"
          alt="Universidad Autónoma de Yucatán">
@@ -39,7 +46,7 @@ $activo ??= '';
             <strong><?= e($_SESSION['usuario']['nombre']) ?></strong>
             <?php $grupos = gruposActuales(); ?>
             <?php if ($grupos !== []): ?>
-                (<?= e(implode(', ', $grupos)) ?>)
+                <span class="sesion-grupos">(<?= e(implode(', ', $grupos)) ?>)</span>
             <?php endif; ?>
             <a href="logout.php">Cerrar sesión</a>
         </p>

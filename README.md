@@ -157,7 +157,8 @@ las consultó.
 > `SELECT`, no en la plantilla: lo que no sale de la base no se puede filtrar
 > por una vista mal escrita.
 
-Con `acciones` se agregan enlaces por fila hacia otro módulo, que reciben `?id=`:
+Con `acciones` se agregan enlaces **por registro** hacia otro módulo, que reciben
+`?id=`:
 
 ```php
 'acciones' => [
@@ -165,7 +166,63 @@ Con `acciones` se agregan enlaces por fila hacia otro módulo, que reciben `?id=
 ],
 ```
 
-El enlace solo se pinta si el usuario tiene permiso sobre ese módulo.
+El enlace solo se pinta si el usuario tiene permiso sobre ese módulo, y aparece
+al pie del panel de detalle, no en la fila. La columna *Acciones* de la tabla se
+queda siempre con lo mismo — ver, editar y eliminar — así no crece cada vez que
+un módulo estrena una pantalla auxiliar.
+
+## Acciones de un módulo
+
+Las que no dependen de ningún registro (exportar, importar, un reporte) cuelgan
+del módulo en el menú lateral, dentro de un desplegable que se abre solo cuando
+ese módulo es el que está abierto. Se declaran en `src/modules.php`:
+
+```php
+'grupo/admin' => [
+    'crud'     => 'grupos',
+    'acciones' => [
+        ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+        ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+    ],
+],
+```
+
+Con `params` el enlace apunta al mismo módulo con esos parámetros; con
+`'modulo' => 'otra/url'` apunta a otro, y entonces solo se pinta si el usuario
+tiene permiso sobre él. Cuidado con el nombre repetido: la clave `acciones` de
+`tables.php` es por registro, esta es por módulo.
+
+Una pantalla que necesita un `?id=` se puede declarar aquí igual, sin pasarle
+ninguno: el enlace del menú entra sin registro elegido y la pantalla pregunta
+cuál antes de seguir. Así las de asignación tienen dos entradas para el mismo
+destino, según con qué se llegue:
+
+| Desde | Qué pasa |
+|---|---|
+| Panel de detalle de una fila | El enlace ya lleva el `?id=`: abre directo |
+| Menú lateral | Sin `?id=`: primero el componente `selector`, luego la pantalla |
+
+## Exportar e importar CSV
+
+`exportar` e `importar` las atiende el CRUD genérico, pero **solo donde el módulo
+las declaró**: escribir `&accion=importar` a mano en un módulo que no la lista
+responde 404. No necesitan una fila propia en la tabla `modulos` ni un permiso
+aparte — cuelgan de la url del módulo, que ya está permisada, y ninguna de las
+dos deja hacer nada que el listado no dejara ya.
+
+**Exportar** baja lo que se está viendo: respeta la búsqueda activa y saca las
+mismas columnas que el panel de detalle, así que una columna con `hash` o en
+`ocultar` tampoco sale en el archivo. Lleva BOM para que Excel no rompa los
+acentos.
+
+**Importar** da de alta en bloque. La primera línea del archivo son los nombres
+de las columnas; las que no estén en `campos` se ignoran. Cada fila pasa por la
+misma validación que el formulario, y la carga es **todo o nada**: si una fila
+falla se deshace la importación completa y se reporta el número de línea. Tope
+de 2 MB y 5000 filas.
+
+Una tabla cuyo alta exija contraseña (`hash` + `requerido`, como `usuarios`) no
+debería declarar `importar`: pediría las contraseñas en claro dentro del CSV.
 
 ## Agregar un módulo que no sea un CRUD
 
@@ -251,6 +308,8 @@ variable que "ya andaba por ahí".
 | `formulario` | Alta y edición; delega cada campo a `campo` |
 | `campo` | Un input, según el `tipo` de `tables.php` |
 | `asignador` | Una relación N:N como lista de casillas |
+| `importador` | Subida de un CSV y los errores que devolvió |
+| `selector` | Lista para elegir sobre qué registro se trabaja |
 
 ### Reglas que no se rompen
 
@@ -280,6 +339,13 @@ llamar a `layout_inicio` / `layout_fin`. Sin build, sin bundler: son `<link>` y
 Si el JS de una página crece y necesita compartir código, usa módulos nativos
 (`<script type="module">` con `import`), que funcionan en el navegador sin
 herramientas.
+
+Por debajo de 768px el menú lateral deja de ocupar una columna y se convierte en
+un panel que se desliza encima del contenido, con una hamburguesa en la barra.
+Se abre con `:target`, igual que el panel de detalle y por la misma razón: no
+hace falta JavaScript. Los dos comparten el fragmento de la URL, así que abrir
+el menú cierra un detalle abierto y al revés — en un teléfono solo cabe una capa
+a la vez.
 
 ## Pruebas
 
