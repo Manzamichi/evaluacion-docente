@@ -14,13 +14,6 @@ declare(strict_types=1);
 
 $titulo ??= 'evaluacion_docente';
 $activo ??= '';
-
-// Versión para invalidar la caché del navegador cuando cambia una hoja de estilos.
-$assetVer = static function (string $ruta): string {
-    $abs = __DIR__ . '/../../public/assets/css/' . $ruta;
-
-    return 'assets/css/' . $ruta . '?v=' . (is_file($abs) ? (string) filemtime($abs) : '1');
-};
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -28,14 +21,18 @@ $assetVer = static function (string $ruta): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($titulo) ?> — evaluacion_docente</title>
-    <link rel="stylesheet" href="<?= e($assetVer('style.css')) ?>">
+    <link rel="stylesheet" href="<?= e(assetVer('assets/css/style.css')) ?>">
     <?php foreach ($css ?? [] as $hoja): ?>
-        <link rel="stylesheet" href="<?= e($assetVer($hoja)) ?>">
+        <link rel="stylesheet" href="<?= e(assetVer('assets/css/' . $hoja)) ?>">
     <?php endforeach; ?>
 </head>
 <body>
 <header class="barra">
-    <strong>:: Sistema de Evaluación Docente ::</strong>
+    <img class="barra-logo"
+         src="<?= e(assetVer('assets/img/logo-uady.png')) ?>"
+         alt="Universidad Autónoma de Yucatán">
+
+    <span class="barra-titulo">Sistema de Evaluación Docente</span>
 
     <?php if (isset($_SESSION['usuario'])): ?>
         <p class="sesion">
