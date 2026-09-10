@@ -427,9 +427,96 @@ function usuarioActual(): ?string
         : null;
 }
 
+/**
+ * Columnas con índice UNIQUE, agrupadas por índice. Cada entrada es la lista de
+ * columnas que ese índice cubre (una sola en casi todos los casos).
+ *
+ * Sale de la base, no de tables.php: la restricción vive en el esquema y así no
+ * hay dos definiciones que puedan separarse. La PRIMARY KEY entra en el
+ * resultado, pero como `id` nunca está entre los datos del formulario,
+ * verificaUnicidad() la ignora sola.
+ *
+ * @return array<string, string[]>
+ */
+function indicesUnicos(PDO $pdo, string $tabla): array
+{
+    static $cache = [];
+
+    if (isset($cache[$tabla])) {
+        return $cache[$tabla];
+    }
+
+    $filas = $pdo->query(
+        'SHOW INDEX FROM ' . ident($tabla) . ' WHERE Non_unique = 0'
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $indices = [];
+
+    foreach ($filas as $fila) {
+        $indices[$fila['Key_name']][(int) $fila['Seq_in_index']] = $fila['Column_name'];
+    }
+
+    return $cache[$tabla] = array_map('array_values', $indices);
+}
+
+/**
+ * Comprueba, antes de tocar la base, que ningún valor con restricción UNIQUE
+ * choque con un registro ya existente. Al editar se excluye el propio $id.
+ *
+ * No es solo por dar un mensaje claro: un INSERT que la llave única rechaza
+ * consume igual el AUTO_INCREMENT, así que sin esta comprobación cada intento
+ * fallido deja un hueco en los ids.
+ *
+ * @throws InvalidArgumentException si algún valor ya está en uso
+ */
+function verificaUnicidad(PDO $pdo, string $tabla, array $cfg, array $datos, int $id = 0): void
+{
+    foreach (indicesUnicos($pdo, $tabla) as $columnas) {
+        // Un índice solo se puede comprobar si el formulario trae todas sus
+        // columnas; si falta alguna (o es la PK sobre `id`), decide la base.
+        if (array_diff($columnas, array_keys($datos)) !== []) {
+            continue;
+        }
+
+        $condiciones = [];
+        $valores     = [];
+
+        foreach ($columnas as $col) {
+            $condiciones[] = ident($col) . ' = ?';
+            $valores[]     = $datos[$col];
+        }
+
+        $sql = 'SELECT 1 FROM ' . ident($tabla)
+            . ' WHERE ' . implode(' AND ', $condiciones);
+
+        if ($id !== 0) {
+            $sql      .= ' AND id <> ?';
+            $valores[] = $id;
+        }
+
+        $stmt = $pdo->prepare($sql . ' LIMIT 1');
+        $stmt->execute($valores);
+
+        if ($stmt->fetchColumn() !== false) {
+            $etiquetas = array_map(
+                static fn (string $col): string => $cfg['campos'][$col]['etiqueta'] ?? $col,
+                $columnas
+            );
+
+            throw new InvalidArgumentException(
+                count($etiquetas) === 1
+                    ? "Ya existe un registro con ese valor en «{$etiquetas[0]}»."
+                    : 'Ya existe un registro con esa combinación de ' . implode(', ', $etiquetas) . '.'
+            );
+        }
+    }
+}
+
 function crear(PDO $pdo, string $tabla, array $datos): void
 {
-    tablaConfig($tabla);
+    $cfg = tablaConfig($tabla);
+
+    verificaUnicidad($pdo, $tabla, $cfg, $datos);
 
     // Se pone aquí y no en saneaEntrada() para que ningún alta pueda saltárselo:
     // la carga masiva de CSV también pasa por esta función.
@@ -447,7 +534,9 @@ function crear(PDO $pdo, string $tabla, array $datos): void
 
 function actualizar(PDO $pdo, string $tabla, int $id, array $datos): void
 {
-    tablaConfig($tabla);
+    $cfg = tablaConfig($tabla);
+
+    verificaUnicidad($pdo, $tabla, $cfg, $datos, $id);
 
     $datos['editado_por'] = usuarioActual();
 

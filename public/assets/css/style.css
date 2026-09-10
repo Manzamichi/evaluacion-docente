@@ -23,8 +23,10 @@
     --peligro: #c0392b;
 
     /* La barra superior. El menú lateral se cuelga de aquí en móvil, así que el
-       alto tiene que ser un solo número y no repetirse en tres reglas. */
-    --barra-alto: 68px;
+       alto tiene que ser un solo número y no repetirse en tres reglas. En PC va
+       más alta para que el logo se lea; el @media la baja a 68px en pantallas
+       angostas. */
+    --barra-alto: 120px;
 }
 
 body {
@@ -62,7 +64,7 @@ body {
 }
 
 .barra-titulo {
-    font-size: 1.05rem;
+    font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: 0.02em;
     color: var(--dorado);
@@ -680,6 +682,12 @@ form small {
    abierto y al revés. En un teléfono es lo correcto: solo cabe una capa. */
 
 @media (max-width: 768px) {
+    /* En pantallas angostas la barra vuelve a su alto compacto: el logo grande de
+       PC dejaría poco sitio para el título y el resto. */
+    :root {
+        --barra-alto: 68px;
+    }
+
     .menu-boton {
         display: inline-flex;
         align-items: center;
@@ -734,7 +742,7 @@ form small {
     }
 
     .barra-titulo {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
     }
 
     /* El nombre y los grupos no caben junto al título, pero "Cerrar sesión" se
