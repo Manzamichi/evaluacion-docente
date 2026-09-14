@@ -19,6 +19,9 @@ declare(strict_types=1);
  *                 tipo       text | email | number | date | textarea | select | password
  *                 requerido  true si no puede ir vacío
  *                 opciones   Valores permitidos (solo para tipo select)
+ *                 opciones_de  Igual que opciones, pero salen de otra tabla:
+ *                            ['tabla' => 'categorias', 'muestra' => 'nombre'].
+ *                            La tabla debe estar declarada aquí (whitelist).
  *                 hash       true para guardar con password_hash() en vez de texto plano
  *   acciones    Enlaces extra por fila hacia otro módulo, que reciben ?id=
  *   ocultar     Columnas que el panel de detalle nunca muestra, porque son
@@ -109,7 +112,24 @@ return [
                 'patron'    => 'validarUrlModulo',
             ],
             'categoria' => [
-                'etiqueta'  => 'Categoría',
+                'etiqueta'    => 'Categoría',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'categorias', 'muestra' => 'nombre'],
+            ],
+            'orden' => [
+                'etiqueta' => 'Orden',
+                'tipo'     => 'number',
+            ],
+        ],
+    ],
+
+    'categorias' => [
+        'etiqueta' => 'Categorías',
+        'listar'   => ['id', 'nombre', 'orden'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
                 'tipo'      => 'text',
                 'requerido' => true,
             ],
