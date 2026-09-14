@@ -25,12 +25,18 @@ INSERT INTO grupos (nombre, descripcion, es_admin) VALUES
     ('Comité', 'Consulta de reportes', 0)
 ON DUPLICATE KEY UPDATE nombre = nombre;
 
+-- Categorías del menú. Van antes que los módulos: modulos.categoria es FK.
+INSERT INTO categorias (nombre, orden) VALUES
+    ('Seguridad', 10)
+ON DUPLICATE KEY UPDATE orden = VALUES(orden);
+
 -- Módulos = pantallas. La `url` debe existir en src/modules.php para poder
 -- abrirse; si no, aparece en el menú pero responde 404.
 INSERT INTO modulos (nombre, descripcion, url, categoria, orden) VALUES
     ('Usuarios', 'Alta y baja de cuentas',        'usuario/admin',  'Seguridad', 10),
     ('Grupos',   'Roles y sus permisos',          'grupo/admin',    'Seguridad', 20),
     ('Módulos',  'Pantallas registradas',         'modulo/admin',   'Seguridad', 30),
+    ('Categorías', 'Categorías del menú',         'categoria/admin','Seguridad', 35),
     ('Permisos del grupo', 'Módulos de un grupo', 'grupo/permisos', 'Seguridad', 40),
     ('Usuarios del grupo', 'Miembros de un grupo','grupo/usuarios', 'Seguridad', 50),
     ('Grupos del usuario', 'Roles de una cuenta', 'usuario/grupos', 'Seguridad', 60)
