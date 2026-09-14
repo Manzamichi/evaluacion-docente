@@ -171,8 +171,12 @@ function menuActual(): array
     $registro = modulos();
     $menu     = [];
 
+    // Las categorías salen en el orden de su propia tabla; los módulos, en el
+    // suyo dentro de cada una.
     $filas = getDbConnection()
-        ->query('SELECT nombre, url, categoria FROM modulos ORDER BY orden, nombre')
+        ->query('SELECT m.nombre, m.url, m.categoria FROM modulos m
+                 JOIN categorias c ON c.nombre = m.categoria
+                 ORDER BY c.orden, c.nombre, m.orden, m.nombre')
         ->fetchAll();
 
     foreach ($filas as $fila) {
