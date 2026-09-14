@@ -582,6 +582,32 @@ function opcionesDe(PDO $pdo, array $destino): array
 }
 
 /**
+ * Convierte cada 'opciones_de' de tables.php en 'opciones' con los valores que
+ * hay hoy en la otra tabla. Se hace una vez por petición, antes de pintar el
+ * formulario o validar el POST, así el resto del CRUD no distingue un select
+ * fijo de uno que sale de la base.
+ *
+ * La tabla de origen pasa por tablaConfig(): tiene que estar en la whitelist.
+ */
+function resuelveOpciones(PDO $pdo, array $cfg): array
+{
+    foreach ($cfg['campos'] as $col => $campo) {
+        if (!isset($campo['opciones_de'])) {
+            continue;
+        }
+
+        tablaConfig($campo['opciones_de']['tabla']);
+
+        $cfg['campos'][$col]['opciones'] = array_column(
+            opcionesDe($pdo, $campo['opciones_de']),
+            $campo['opciones_de']['muestra']
+        );
+    }
+
+    return $cfg;
+}
+
+/**
  * Aplica la función de validación declarada en 'patron' (definida en
  * helpers/validation.php). Sin 'patron' no hace nada.
  */
