@@ -129,7 +129,9 @@ desde **Grupos > Usuarios**.
    ```
 
 4. Insértala en la tabla `modulos` con esa misma url, y asígnala a los grupos
-   que deban verla:
+   que deban verla. La `categoria` tiene que existir en la tabla `categorias`
+   (se administran desde **Módulos > Categorías**; también deciden el orden de
+   los encabezados del menú):
 
    ```sql
    INSERT INTO modulos (nombre, url, categoria, orden)
@@ -140,7 +142,9 @@ Aparece en el menú con su listado, buscador, alta, edición y borrado. No hay q
 escribir una línea de HTML.
 
 Tipos de campo disponibles: `text`, `email`, `number`, `date`, `textarea`,
-`select` (con `opciones`) y `password` (con `hash => true`).
+`select` (con `opciones` fijas, o `opciones_de => ['tabla' => 'categorias',
+'muestra' => 'nombre']` para sacarlas de otra tabla declarada en `tables.php`)
+y `password` (con `hash => true`).
 
 El listado se pagina solo: 10 filas por página, o las que diga `por_pagina` en
 la tabla. La búsqueda y la paginación se combinan — el conteo de páginas se hace

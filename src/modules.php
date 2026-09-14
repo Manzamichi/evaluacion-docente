@@ -63,7 +63,17 @@ return [
         'acciones' => [
             ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
             ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            // Listar, crear y editar categorías: todo está en ese CRUD.
+            ['etiqueta' => 'Categorías', 'modulo' => 'categoria/admin'],
         ],
+    ],
+
+    // Las categorías del menú. No va suelto en el menú: cuelga de Módulos, que
+    // es donde se usa. Necesita su fila en `modulos` igual, para permisarlo.
+    'categoria/admin' => [
+        'crud'   => 'categorias',
+        'oculto' => true,
+        'volver' => 'modulo/admin',
     ],
 
     // Las dos pantallas de asignación N:N usan el mismo archivo con distinta

@@ -17,12 +17,12 @@ declare(strict_types=1);
 /** @var array $mod */
 
 $tabla  = (string) $mod['crud'];
-$cfg    = tablaConfig($tabla);
 $accion = (string) ($_GET['accion'] ?? 'listar');
 $id     = (int) ($_GET['id'] ?? 0);
 $pagina = max(1, (int) ($_GET['pagina'] ?? 1));
 
 $pdo      = getDbConnection();
+$cfg      = resuelveOpciones($pdo, tablaConfig($tabla));
 $error    = null;
 $registro = [];
 
@@ -108,7 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error    = $e->getMessage();
             $registro = $_POST;
         } catch (PDOException) {
-            $error    = 'No se pudo guardar el registro. Revisa que no haya valores duplicados.';
+            // Al borrar, lo único que la base rechaza es una FK con RESTRICT
+            // (una categoría con módulos); al guardar, un UNIQUE repetido.
+            $error = $accion === 'eliminar'
+                ? 'No se pudo eliminar: hay registros que dependen de este.'
+                : 'No se pudo guardar el registro. Revisa que no haya valores duplicados.';
             $registro = $_POST;
         }
     }
