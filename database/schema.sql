@@ -42,15 +42,31 @@ CREATE TABLE IF NOT EXISTS grupos (
     editado_por VARCHAR(32) NULL DEFAULT NULL
 );
 
+-- Categorías del menú lateral. `orden` decide en qué posición sale cada
+-- encabezado; los módulos se ordenan dentro con su propio `orden`.
+CREATE TABLE IF NOT EXISTS categorias (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(40) NOT NULL UNIQUE,
+    orden INT NOT NULL DEFAULT 0,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL
+);
+
+-- modulos.categoria referencia el nombre y no el id a propósito: el menú y el
+-- dual box de permisos lo leen directo sin JOIN, renombrar una categoría
+-- arrastra a sus módulos (ON UPDATE CASCADE) y no se puede borrar una que
+-- todavía tenga módulos (RESTRICT).
 CREATE TABLE IF NOT EXISTS modulos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(80) NOT NULL,
     descripcion VARCHAR(255) NULL,
     url VARCHAR(120) NOT NULL UNIQUE,
-    categoria VARCHAR(40) NOT NULL DEFAULT 'General',
+    categoria VARCHAR(40) NOT NULL,
     orden INT NOT NULL DEFAULT 0,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL
+    editado_por VARCHAR(32) NULL DEFAULT NULL,
+    FOREIGN KEY (categoria) REFERENCES categorias(nombre)
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS usuario_grupo (
