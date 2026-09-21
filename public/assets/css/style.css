@@ -577,6 +577,52 @@ form small {
     color: var(--dorado);
 }
 
+/* Login: reutiliza la barra institucional (solo logo y título, sin sesión ni
+   menú, así que .barra queda con justify-content por defecto) y una tarjeta
+   propia para el formulario. */
+
+.login-box {
+    max-width: 26rem;
+    margin: 4rem auto;
+    padding: 2rem 2.25rem 2.25rem;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-top: 4px solid var(--dorado);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgb(25 46 76 / 0.08);
+}
+
+.login-box h1 {
+    color: var(--azul);
+}
+
+.login-hint {
+    margin: 0.35rem 0 1.5rem;
+    font-size: 0.85rem;
+    color: var(--suave);
+}
+
+.login-box .error {
+    margin: 1rem 0;
+}
+
+.login-boton {
+    display: block;
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+}
+
+@media (max-width: 480px) {
+    .login-box {
+        margin: 0 auto;
+        padding: 1.5rem;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
+
 .aviso {
     max-width: 32rem;
     margin: 4rem auto;
@@ -668,7 +714,7 @@ form small {
 }
 
 .error ul {
-    margin: 0.5rem 0 0 1.25rem;
+    margin: 0.5rem 0 0.5rem 1.25rem;
 }
 
 /* Menú lateral en pantallas angostas.
