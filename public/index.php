@@ -30,7 +30,32 @@ if ($m === '') {
 
     if ($inicio === null) {
         http_response_code(403);
-        exit('Tu cuenta no tiene ningún módulo asignado. Pide a un administrador que te agregue a un grupo.');
+
+        $css = htmlspecialchars(assetVer('assets/css/style.css'), ENT_QUOTES, 'UTF-8');
+        $logo = htmlspecialchars(assetVer('assets/img/logo-uady.png'), ENT_QUOTES, 'UTF-8');
+
+        exit(<<<HTML
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Sin módulos — evaluacion_docente</title>
+                <link rel="stylesheet" href="{$css}">
+            </head>
+            <body>
+            <header class="barra">
+                <img class="barra-logo" src="{$logo}" alt="Universidad Autónoma de Yucatán">
+                <span class="barra-titulo">Sistema de Evaluación Docente</span>
+            </header>
+            <main class="aviso">
+                <h1>Tu cuenta no tiene ningún módulo asignado</h1>
+                <p>Pide a un administrador que te agregue a un grupo.</p>
+                <p><a href="logout.php">Cerrar sesión y entrar con otra cuenta</a></p>
+            </main>
+            </body>
+            </html>
+            HTML);
     }
 
     header('Location: ' . urlModulo($inicio));

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/modulos.php';
+require_once __DIR__ . '/../components/_render.php';
 
 function requerirSesion(): void
 {
@@ -40,6 +41,9 @@ function requerirModulo(string $url): void
     $grupos = $grupos === [] ? 'ningún grupo' : implode(', ', $grupos);
     $grupos = htmlspecialchars($grupos, ENT_QUOTES, 'UTF-8');
 
+    $css = htmlspecialchars(assetVer('assets/css/style.css'), ENT_QUOTES, 'UTF-8');
+    $logo = htmlspecialchars(assetVer('assets/img/logo-uady.png'), ENT_QUOTES, 'UTF-8');
+
     exit(<<<HTML
         <!DOCTYPE html>
         <html lang="es">
@@ -47,9 +51,13 @@ function requerirModulo(string $url): void
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Sin permiso — evaluacion_docente</title>
-            <link rel="stylesheet" href="assets/css/style.css">
+            <link rel="stylesheet" href="{$css}">
         </head>
         <body>
+        <header class="barra">
+            <img class="barra-logo" src="{$logo}" alt="Universidad Autónoma de Yucatán">
+            <span class="barra-titulo">Sistema de Evaluación Docente</span>
+        </header>
         <main class="aviso">
             <h1>No tienes permiso para ver esta página</h1>
             <p>Tu sesión pertenece a: <strong>{$grupos}</strong>.</p>
