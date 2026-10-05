@@ -72,6 +72,20 @@ lanza('contraseña corta debe rechazarse', static fn () => saneaEntrada($cfg, [
     'password_hash' => 'corta',
 ], true));
 
+// Tipo de pregunta: tipo de 1 a 255 ('min'/'max'), respuesta opcional (instrucciones)
+$tipos = tablaConfig('tipo_preguntas');
+
+foreach (['0', '-1', '256', '1.5', 'abc'] as $malo) {
+    lanza("tipo {$malo} debe rechazarse", static fn () => saneaEntrada($tipos, [
+        'nombre' => 'Likert',
+        'tipo'   => $malo,
+    ], true));
+}
+
+$instrucciones = saneaEntrada($tipos, ['nombre' => 'Instrucciones', 'tipo' => '1'], true);
+assert($instrucciones['tipo'] === '1' && $instrucciones['respuesta'] === null);
+assert(saneaEntrada($tipos, ['nombre' => 'Abierta', 'tipo' => '255'], true)['tipo'] === '255');
+
 // Al editar, contraseña vacía no toca la columna
 $edicion = saneaEntrada($cfg, [
     'usuario'       => 'ana.lopez',
