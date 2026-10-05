@@ -84,3 +84,54 @@ CREATE TABLE IF NOT EXISTS grupo_modulo (
     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE,
     FOREIGN KEY (modulo_id) REFERENCES modulos(id) ON DELETE CASCADE
 );
+
+-- Instrumentos de evaluación
+--
+--   instrumento  --1:N-->  preguntas  <--N:1--  dimensiones
+--                              ^
+--                              N:1
+--                         tipo_preguntas
+--
+-- Las FK de preguntas son RESTRICT: no se puede borrar un instrumento, tipo o
+-- dimensión mientras alguna pregunta lo use.
+
+CREATE TABLE IF NOT EXISTS tipo_preguntas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    tipo TINYINT UNSIGNED NOT NULL,
+    -- NULL en los tipos que no esperan respuesta (instrucciones).
+    respuesta VARCHAR(2048) NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS instrumentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    fecha_elaboracion DATE NOT NULL,
+    instruccion TEXT NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS dimensiones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    comentarios VARCHAR(255) NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS preguntas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    instrumento_id INT NOT NULL,
+    tipo_id INT NOT NULL,
+    pregunta TEXT NOT NULL,
+    dimension_id INT NOT NULL,
+    orden INT NOT NULL DEFAULT 0,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL,
+    FOREIGN KEY (instrumento_id) REFERENCES instrumentos(id) ON DELETE RESTRICT,
+    FOREIGN KEY (tipo_id) REFERENCES tipo_preguntas(id) ON DELETE RESTRICT,
+    FOREIGN KEY (dimension_id) REFERENCES dimensiones(id) ON DELETE RESTRICT
+);
