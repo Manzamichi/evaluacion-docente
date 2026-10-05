@@ -14,6 +14,10 @@ declare(strict_types=1);
  */
 
 $requerido = !empty($campo['requerido']) && ($nuevo || empty($campo['hash']));
+
+if ($nuevo && $valor === '' && isset($campo['defecto'])) {
+    $valor = (string) $campo['defecto'];
+}
 ?>
 <label>
     <span><?= e($campo['etiqueta']) ?></span>
@@ -22,7 +26,7 @@ $requerido = !empty($campo['requerido']) && ($nuevo || empty($campo['hash']));
         <select name="<?= e($col) ?>">
             <?php foreach ($campo['opciones'] as $opcion): ?>
                 <option value="<?= e($opcion) ?>" <?= $valor === $opcion ? 'selected' : '' ?>>
-                    <?= e($opcion) ?>
+                    <?= e($campo['etiquetas'][$opcion] ?? $opcion) ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -34,6 +38,8 @@ $requerido = !empty($campo['requerido']) && ($nuevo || empty($campo['hash']));
         <input type="<?= e($campo['tipo']) ?>"
                name="<?= e($col) ?>"
                value="<?= e($valor) ?>"
+            <?= isset($campo['min']) ? 'min="' . e((string) $campo['min']) . '"' : '' ?>
+            <?= isset($campo['max']) ? 'max="' . e((string) $campo['max']) . '"' : '' ?>
             <?= $requerido ? 'required' : '' ?>>
     <?php endif; ?>
 

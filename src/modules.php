@@ -76,6 +76,39 @@ return [
         'volver' => 'modulo/admin',
     ],
 
+    // Instrumentos de evaluación
+    'instrumento/admin' => [
+        'crud'     => 'instrumentos',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    'pregunta/admin' => [
+        'crud'     => 'preguntas',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    'dimension/admin' => [
+        'crud'     => 'dimensiones',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    'tipo_pregunta/admin' => [
+        'crud'     => 'tipo_preguntas',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
     // Las dos pantallas de asignación N:N usan el mismo archivo con distinta
     // configuración: cambia el pivote y de qué tabla sale cada lista.
     'grupo/permisos' => [

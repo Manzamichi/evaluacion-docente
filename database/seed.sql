@@ -27,7 +27,8 @@ ON DUPLICATE KEY UPDATE nombre = nombre;
 
 -- Categorías del menú. Van antes que los módulos: modulos.categoria es FK.
 INSERT INTO categorias (nombre, orden) VALUES
-    ('Seguridad', 10)
+    ('Seguridad', 10),
+    ('Instrumentos', 20)
 ON DUPLICATE KEY UPDATE orden = VALUES(orden);
 
 -- Módulos = pantallas. La `url` debe existir en src/modules.php para poder
@@ -39,7 +40,11 @@ INSERT INTO modulos (nombre, descripcion, url, categoria, orden) VALUES
     ('Categorías', 'Categorías del menú',         'categoria/admin','Seguridad', 35),
     ('Permisos del grupo', 'Módulos de un grupo', 'grupo/permisos', 'Seguridad', 40),
     ('Usuarios del grupo', 'Miembros de un grupo','grupo/usuarios', 'Seguridad', 50),
-    ('Grupos del usuario', 'Roles de una cuenta', 'usuario/grupos', 'Seguridad', 60)
+    ('Grupos del usuario', 'Roles de una cuenta', 'usuario/grupos', 'Seguridad', 60),
+    ('Instrumentos', 'Instrumentos de evaluación',  'instrumento/admin',   'Instrumentos', 10),
+    ('Preguntas',    'Preguntas de cada instrumento', 'pregunta/admin',    'Instrumentos', 20),
+    ('Dimensiones',  'Dimensiones que agrupan preguntas', 'dimension/admin', 'Instrumentos', 30),
+    ('Tipos de pregunta', 'Formatos de respuesta', 'tipo_pregunta/admin', 'Instrumentos', 40)
 ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), categoria = VALUES(categoria), orden = VALUES(orden);
 
 -- admin1 es Administrador; los otros dos, su grupo correspondiente.
