@@ -22,7 +22,12 @@ declare(strict_types=1);
  *                 opciones_de  Igual que opciones, pero salen de otra tabla:
  *                            ['tabla' => 'categorias', 'muestra' => 'nombre'].
  *                            La tabla debe estar declarada aquí (whitelist).
+ *                            Con 'guarda' => 'id' se muestra 'muestra' pero se
+ *                            guarda el id: es lo que necesita una FK a id.
  *                 hash       true para guardar con password_hash() en vez de texto plano
+ *                 min, max   Rango de un entero (tipo number). Van en el <input>
+ *                            y se vuelven a comprobar al guardar.
+ *                 defecto    Valor con el que arranca el campo en un alta
  *   acciones    Enlaces extra por fila hacia otro módulo, que reciben ?id=
  *   ocultar     Columnas que el panel de detalle nunca muestra, porque son
  *               sensibles (tokens, CURP, RFC). Las que ya tienen 'hash' => true
@@ -136,6 +141,105 @@ return [
             'orden' => [
                 'etiqueta' => 'Orden',
                 'tipo'     => 'number',
+            ],
+        ],
+    ],
+
+    'instrumentos' => [
+        'etiqueta' => 'Instrumentos',
+        'listar'   => ['id', 'nombre', 'fecha_elaboracion'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'fecha_elaboracion' => [
+                'etiqueta'  => 'Fecha de elaboración',
+                'tipo'      => 'date',
+                'requerido' => true,
+            ],
+            'instruccion' => [
+                'etiqueta' => 'Instrucción',
+                'tipo'     => 'textarea',
+            ],
+        ],
+    ],
+
+    'dimensiones' => [
+        'etiqueta' => 'Dimensiones',
+        'listar'   => ['id', 'nombre', 'comentarios'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'comentarios' => [
+                'etiqueta' => 'Comentarios',
+                'tipo'     => 'text',
+            ],
+        ],
+    ],
+
+    'tipo_preguntas' => [
+        'etiqueta' => 'Tipos de pregunta',
+        'listar'   => ['id', 'nombre', 'tipo'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'tipo' => [
+                'etiqueta'  => 'Tipo',
+                'tipo'      => 'number',
+                'requerido' => true,
+                'min'       => 1,
+                'max'       => 255, // tope de TINYINT UNSIGNED
+                'defecto'   => 1,
+            ],
+            // Opcional: un tipo "instrucciones" se muestra en el instrumento
+            // pero no espera respuesta.
+            'respuesta' => [
+                'etiqueta' => 'Respuesta',
+                'tipo'     => 'textarea',
+            ],
+        ],
+    ],
+
+    'preguntas' => [
+        'etiqueta' => 'Preguntas',
+        'listar'   => ['id', 'instrumento_id', 'dimension_id', 'tipo_id', 'orden', 'pregunta'],
+        'campos'   => [
+            'instrumento_id' => [
+                'etiqueta'    => 'Instrumento',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'instrumentos', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'dimension_id' => [
+                'etiqueta'    => 'Dimensión',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'dimensiones', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'tipo_id' => [
+                'etiqueta'    => 'Tipo de pregunta',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'tipo_preguntas', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'pregunta' => [
+                'etiqueta'  => 'Pregunta',
+                'tipo'      => 'textarea',
+                'requerido' => true,
+            ],
+            // Requerido: vacío llega como NULL y la columna es NOT NULL.
+            'orden' => [
+                'etiqueta'  => 'Orden',
+                'tipo'      => 'number',
+                'requerido' => true,
             ],
         ],
     ],
