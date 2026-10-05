@@ -685,12 +685,15 @@ function resuelveOpciones(PDO $pdo, array $cfg): array
             continue;
         }
 
-        tablaConfig($campo['opciones_de']['tabla']);
+        $origen = $campo['opciones_de'];
+        tablaConfig($origen['tabla']);
 
-        $cfg['campos'][$col]['opciones'] = array_column(
-            opcionesDe($pdo, $campo['opciones_de']),
-            $campo['opciones_de']['muestra']
-        );
+        $filas  = opcionesDe($pdo, $origen);
+        $guarda = $origen['guarda'] ?? $origen['muestra'];
+
+        // Strings: saneaEntrada() compara estricto contra lo que llega del POST.
+        $cfg['campos'][$col]['opciones']  = array_map('strval', array_column($filas, $guarda));
+        $cfg['campos'][$col]['etiquetas'] = array_column($filas, $origen['muestra'], $guarda);
     }
 
     return $cfg;
@@ -748,6 +751,18 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
 
         if (isset($campo['opciones']) && $valor !== '' && !in_array($valor, $campo['opciones'], true)) {
             throw new InvalidArgumentException("Valor inválido en {$campo['etiqueta']}.");
+        }
+
+        // 'min'/'max' también van en el <input>, pero el navegador no es barrera.
+        if ($valor !== '' && (isset($campo['min']) || isset($campo['max']))) {
+            $rango = [
+                'min_range' => $campo['min'] ?? PHP_INT_MIN,
+                'max_range' => $campo['max'] ?? PHP_INT_MAX,
+            ];
+
+            if (filter_var($valor, FILTER_VALIDATE_INT, ['options' => $rango]) === false) {
+                throw new InvalidArgumentException("Valor fuera de rango en {$campo['etiqueta']}.");
+            }
         }
 
         if ($valor !== '') {
