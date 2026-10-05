@@ -143,8 +143,11 @@ escribir una línea de HTML.
 
 Tipos de campo disponibles: `text`, `email`, `number`, `date`, `textarea`,
 `select` (con `opciones` fijas, o `opciones_de => ['tabla' => 'categorias',
-'muestra' => 'nombre']` para sacarlas de otra tabla declarada en `tables.php`)
-y `password` (con `hash => true`).
+'muestra' => 'nombre']` para sacarlas de otra tabla declarada en `tables.php`;
+agrega `'guarda' => 'id'` si la columna es una FK a `id`: muestra el nombre y
+guarda el id) y `password` (con `hash => true`). Un `number` acepta `min` y
+`max` (se ponen en el `<input>` y se vuelven a validar al guardar), y cualquier
+campo acepta `defecto`, el valor con el que arranca en un alta.
 
 El listado se pagina solo: 10 filas por página, o las que diga `por_pagina` en
 la tabla. La búsqueda y la paginación se combinan — el conteo de páginas se hace
