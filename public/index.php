@@ -72,6 +72,8 @@ try {
 requerirModulo($m);
 
 $titulo = null;
+$css    = [];
+$js     = [];
 
 ob_start();
 
@@ -90,8 +92,9 @@ componente('layout_inicio', [
     // Un módulo auxiliar (permisos, usuarios del grupo) resalta el listado del
     // que cuelga, que es el que sí está en el menú.
     'activo' => $mod['volver'] ?? $m,
+    'css'    => $css,
 ]);
 
 echo $contenido;
 
-componente('layout_fin');
+componente('layout_fin', ['js' => $js]);

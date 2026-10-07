@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/helpers/validation.php';
+require_once __DIR__ . '/helpers/html.php';
 
 /**
  * Devuelve la configuración de todas las tablas declaradas en tables.php.
@@ -729,7 +730,21 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
     $datos = [];
 
     foreach ($cfg['campos'] as $col => $campo) {
-        $valor = trim((string) ($entrada[$col] ?? ''));
+        // Un campo con 'solo_si' que no aplica se guarda vacío, venga lo que venga.
+        if (isset($campo['solo_si'])) {
+            [$otra, $esperado] = $campo['solo_si'];
+
+            if (trim((string) ($entrada[$otra] ?? '')) !== $esperado) {
+                $datos[$col] = null;
+                continue;
+            }
+        }
+
+        $valor = match ($campo['tipo']) {
+            'pares' => textoDePares(filasDePares($entrada[$col] ?? ''), $campo['etiqueta']),
+            'html'  => limpiaHtml((string) ($entrada[$col] ?? '')),
+            default => trim((string) ($entrada[$col] ?? '')),
+        };
 
         if (!empty($campo['hash'])) {
             if ($valor === '') {
@@ -773,6 +788,68 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
     }
 
     return $datos;
+}
+
+/**
+ * Filas [valor, texto] de un campo 'pares'. Acepta las dos formas en que llega:
+ * el texto guardado ("1:Sí,2:No", también lo que trae un CSV) o el POST del
+ * formulario (['valor' => [...], 'texto' => [...]]).
+ */
+function filasDePares(array|string $entrada): array
+{
+    if (is_array($entrada)) {
+        return array_map(
+            static fn ($v, $t) => [trim((string) $v), trim((string) $t)],
+            (array) ($entrada['valor'] ?? []),
+            (array) ($entrada['texto'] ?? [])
+        );
+    }
+
+    if (trim($entrada) === '') {
+        return [];
+    }
+
+    return array_map(static function (string $par): array {
+        $partes = explode(':', $par, 2);
+
+        return [trim($partes[0]), trim($partes[1] ?? '')];
+    }, explode(',', $entrada));
+}
+
+/**
+ * Valida las filas de un campo 'pares' y las une en el texto que se guarda.
+ * Las filas vacías se ignoran: es lo que deja el botón "+" sin llenar.
+ */
+function textoDePares(array $filas, string $etiqueta): string
+{
+    $pares = [];
+
+    foreach ($filas as [$valor, $texto]) {
+        if ($valor === '' && $texto === '') {
+            continue;
+        }
+
+        if ($valor === '' || $texto === '') {
+            throw new InvalidArgumentException("{$etiqueta}: cada opción necesita valor y respuesta.");
+        }
+
+        if (filter_var($valor, FILTER_VALIDATE_INT) === false) {
+            throw new InvalidArgumentException("{$etiqueta}: el valor \"{$valor}\" debe ser un entero.");
+        }
+
+        // La coma separa las opciones al guardarlas: dentro de una partiría la fila.
+        if (str_contains($texto, ',')) {
+            throw new InvalidArgumentException("{$etiqueta}: la respuesta \"{$texto}\" no puede llevar comas.");
+        }
+
+        if (isset($pares[$valor])) {
+            throw new InvalidArgumentException("{$etiqueta}: el valor {$valor} está repetido.");
+        }
+
+        $pares[$valor] = "{$valor}:{$texto}";
+    }
+
+    return implode(',', $pares);
 }
 
 /**

@@ -349,6 +349,63 @@ form small {
     font-size: 0.8rem;
 }
 
+/* 'form label' fija display: block, que le gana al atributo hidden de solo_si. */
+form [hidden] {
+    display: none;
+}
+
+/* Campo 'pares': opciones valor/respuesta con botones + y −. */
+
+.pares {
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+    padding: 0.75rem 1rem;
+    margin: 0 0 1rem;
+}
+
+.pares legend {
+    font-size: 0.9rem;
+    color: var(--suave);
+    padding: 0 0.25rem;
+}
+
+.pares-fila {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    gap: 0.75rem;
+}
+
+.pares-fila label {
+    margin-bottom: 0.5rem;
+}
+
+/* Campo 'html': editor Quill. Su CSS (vendor/quill.snow.css) pone la barra. */
+
+.campo-html {
+    margin-bottom: 1rem;
+}
+
+.campo-html > span {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--suave);
+}
+
+.campo-html .ql-container {
+    min-height: 10rem;
+    font: inherit;
+}
+
+/* Texto guardado desde el editor, fuera de él. Quill alinea y sangra con clases. */
+
+.texto-html .ql-align-center { text-align: center; }
+.texto-html .ql-align-right { text-align: right; }
+.texto-html .ql-align-justify { text-align: justify; }
+.texto-html .ql-indent-1 { padding-left: 3em; }
+.texto-html .ql-indent-2 { padding-left: 6em; }
+.texto-html .ql-indent-3 { padding-left: 9em; }
+
 .acciones-form {
     display: flex;
     align-items: center;
