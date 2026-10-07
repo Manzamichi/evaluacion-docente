@@ -150,6 +150,12 @@ $listado = $listando
 
 $titulo = $cfg['etiqueta'];
 
+// El editor de texto (Quill) solo se carga en el formulario de una tabla que lo usa.
+if (!$listando && in_array('html', array_column($cfg['campos'], 'tipo'), true)) {
+    $css = ['vendor/quill.snow.css'];
+    $js  = ['vendor/quill.js', 'editor.js'];
+}
+
 if ($error !== null) {
     echo '<p class="error">', e($error), '</p>';
 }
