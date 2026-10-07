@@ -33,7 +33,14 @@ declare(strict_types=1);
             <dt><?= e($cfg['campos'][$col]['etiqueta'] ?? $col) ?></dt>
             <dd>
                 <?php // Una celda vacía no distingue "sin dato" de un error de pintado. ?>
-                <?= $fila[$col] === null || $fila[$col] === '' ? '—' : e($fila[$col]) ?>
+                <?php if ($fila[$col] === null || $fila[$col] === ''): ?>
+                    —
+                <?php elseif (($cfg['campos'][$col]['tipo'] ?? '') === 'html'): ?>
+                    <?php // Sin e(): limpiaHtml() es la lista blanca de lo que puede salir crudo. ?>
+                    <div class="texto-html"><?= limpiaHtml((string) $fila[$col]) ?></div>
+                <?php else: ?>
+                    <?= e($fila[$col]) ?>
+                <?php endif; ?>
             </dd>
         <?php endforeach; ?>
     </dl>
