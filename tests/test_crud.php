@@ -72,19 +72,57 @@ lanza('contraseña corta debe rechazarse', static fn () => saneaEntrada($cfg, [
     'password_hash' => 'corta',
 ], true));
 
-// Tipo de pregunta: tipo de 1 a 255 ('min'/'max'), respuesta opcional (instrucciones)
+// --- Tipo de pregunta: tipo fijo y respuestas como pares valor:respuesta ---
+
 $tipos = tablaConfig('tipo_preguntas');
 
-foreach (['0', '-1', '256', '1.5', 'abc'] as $malo) {
+// Solo 1, 2 o 3
+foreach (['0', '4', '-1', 'abc'] as $malo) {
     lanza("tipo {$malo} debe rechazarse", static fn () => saneaEntrada($tipos, [
         'nombre' => 'Likert',
         'tipo'   => $malo,
     ], true));
 }
 
-$instrucciones = saneaEntrada($tipos, ['nombre' => 'Instrucciones', 'tipo' => '1'], true);
-assert($instrucciones['tipo'] === '1' && $instrucciones['respuesta'] === null);
-assert(saneaEntrada($tipos, ['nombre' => 'Abierta', 'tipo' => '255'], true)['tipo'] === '255');
+// Instrucción y abierta no guardan respuestas aunque el formulario mande filas
+$abierta = saneaEntrada($tipos, [
+    'nombre'    => 'Abierta',
+    'tipo'      => '2',
+    'respuesta' => ['valor' => ['1'], 'texto' => ['Sí']],
+], true);
+assert($abierta['respuesta'] === null);
+
+// Opción múltiple: las filas del formulario se unen, las vacías se ignoran
+$multiple = saneaEntrada($tipos, [
+    'nombre'    => 'Dicotómica',
+    'tipo'      => '3',
+    'respuesta' => ['valor' => ['1', '2', ''], 'texto' => ['Sí', ' No ', '']],
+], true);
+assert($multiple['respuesta'] === '1:Sí,2:No');
+
+// El texto guardado (o el de un CSV) se lee de vuelta en filas, y pasa igual
+assert(filasDePares('1:Sí,2:No') === [['1', 'Sí'], ['2', 'No']]);
+assert(filasDePares('') === []);
+assert(saneaEntrada($tipos, ['nombre' => 'X', 'tipo' => '3', 'respuesta' => '0:Nunca,1:A veces'], true)['respuesta']
+    === '0:Nunca,1:A veces');
+
+// Opción múltiple sin respuestas, o con filas mal formadas
+$malas = [
+    'sin filas'        => ['valor' => [''], 'texto' => ['']],
+    'falta respuesta'  => ['valor' => ['1'], 'texto' => ['']],
+    'falta valor'      => ['valor' => [''], 'texto' => ['Sí']],
+    'valor no entero'  => ['valor' => ['1.5'], 'texto' => ['Sí']],
+    'coma en el texto' => ['valor' => ['1'], 'texto' => ['Sí, siempre']],
+    'valor repetido'   => ['valor' => ['1', '1'], 'texto' => ['Sí', 'No']],
+];
+
+foreach ($malas as $caso => $respuesta) {
+    lanza("opción múltiple con {$caso} debe rechazarse", static fn () => saneaEntrada($tipos, [
+        'nombre'    => 'Likert',
+        'tipo'      => '3',
+        'respuesta' => $respuesta,
+    ], true));
+}
 
 // Al editar, contraseña vacía no toca la columna
 $edicion = saneaEntrada($cfg, [
@@ -114,6 +152,38 @@ lanza('url con formato inválido debe rechazarse', static fn () => saneaEntrada(
 
 // Escape de HTML
 assert(e('<script>') === '&lt;script&gt;');
+
+// --- Campos 'html' (editor con formato) ---
+
+// El formato del editor pasa tal cual
+$conFormato = '<p class="ql-align-center">Las <strong>fortalezas</strong> son:</p><ul><li>Sí, ñandú &amp; &lt;b&gt;</li></ul>';
+assert(limpiaHtml($conFormato) === $conFormato);
+
+// Lo que puede ejecutar código se va; el texto alrededor se queda
+assert(limpiaHtml('<p onclick="x()" style="color:red" class="ql-align-center otra">a</p>')
+    === '<p class="ql-align-center">a</p>');
+assert(limpiaHtml('<p>a</p><script>alert(1)</script><img src=x onerror=alert(1)>') === '<p>a</p>');
+assert(limpiaHtml('<svg><a href="https://x"><script>alert(1)</script></a></svg><p>b</p>') === '<p>b</p>');
+assert(limpiaHtml('</body><script>alert(1)</script><p>c</p><!-- x -->') === '<p>c</p>');
+assert(limpiaHtml('<div>d<span>e</span></div>') === 'de');
+
+// Enlaces: solo http, https y mailto, y siempre en pestaña nueva sin opener
+foreach (['javascript:alert(1)', ' JaVaScRiPt:alert(1)', "java\tscript:alert(1)", 'data:text/html,x', '/ruta'] as $href) {
+    assert(!str_contains(limpiaHtml('<a href="' . e($href) . '">x</a>'), 'href'), $href);
+}
+assert(limpiaHtml('<a href="https://uady.mx">u</a>')
+    === '<a href="https://uady.mx" target="_blank" rel="noopener noreferrer">u</a>');
+
+// Un editor vacío cuenta como vacío: no llena un campo requerido
+assert(limpiaHtml('<p></p>') === '' && limpiaHtml('<p><br></p>') === '' && limpiaHtml('') === '');
+lanza('pregunta vacía debe rechazarse', static fn () => saneaEntrada(tablaConfig('preguntas'), [
+    'instrumento_id' => '1', 'dimension_id' => '1', 'tipo_id' => '1', 'orden' => '1',
+    'pregunta'       => '<p><br></p>',
+], true));
+
+// En el listado sale una línea de texto, sin pegar palabras de bloques distintos
+assert(textoPlano('<p>Uno <strong>dos</strong>tres</p><ul><li>cuatro</li></ul><p>&amp; cinco</p>')
+    === 'Uno dostres cuatro & cinco');
 
 // --- Búsqueda por columna ---
 
