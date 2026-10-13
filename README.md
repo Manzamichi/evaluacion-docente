@@ -155,6 +155,12 @@ con botones + y −; se guarda como `1:Sí,2:No`, así que el valor es entero y 
 respuesta no lleva comas. Con `'solo_si' => ['tipo', '3']` un campo solo aplica
 cuando otra columna tiene ese valor: se oculta en el formulario y se guarda NULL.
 
+Un campo de orden con `'al_final_de' => 'instrumento_id'` no se pide en el alta:
+`crear()` pone el siguiente número de ese grupo y el registro nuevo queda al
+final. Un alta también puede llegar con valores ya elegidos en la url,
+`?accion=nuevo&v[instrumento_id]=2`; solo se toman columnas del formulario y
+solo como valor inicial.
+
 El tipo `html` es un editor con formato ([Quill](https://quilljs.com) 2, BSD,
 copiado en `public/assets/js/vendor/` y `css/vendor/`; sin CDN ni build). Se
 carga solo en el formulario de una tabla que lo use. Guarda HTML en una columna
@@ -297,6 +303,18 @@ $titulo = 'Reporte general';
 ```
 
 Falta insertarlo en la tabla `modulos` y asignarlo a un grupo para que aparezca.
+
+### Ejemplo real: ordenar las preguntas de un instrumento
+
+`instrumento/preguntas` (`src/modules/instrumento_preguntas.php`) lista las
+preguntas de un instrumento y las reordena arrastrando (`ordenar.js`) o con
+botones ↑ ↓, que funcionan con teclado, en celular y sin JavaScript. En los dos
+casos se manda la lista completa de ids en su nuevo orden y
+`reordenar($pdo, 'preguntas', 'instrumento_id', $id, $ids)` renumera `orden` de
+1 a n en una transacción: nadie corrige a mano los números de las demás. Si la
+lista no trae exactamente las preguntas del instrumento (alguien agregó o borró
+una mientras tanto) se rechaza y no cambia nada. Sirve igual para cualquier
+tabla con columna `orden`.
 
 ## Componentes
 
