@@ -296,6 +296,51 @@ assert(!validarUrlModulo('../etc/passwd'));
 assert(!validarUrlModulo('grupo/'));
 assert(!validarUrlModulo(''));
 
+// --- Orden de las preguntas de un instrumento ---
+
+// ↑ ↓ intercambian con el vecino; en los extremos y con un id ajeno no pasa nada
+assert(moverEnLista([1, 2, 3], 3, -1) === [1, 3, 2]);
+assert(moverEnLista([1, 2, 3], 1, 1) === [2, 1, 3]);
+assert(moverEnLista([1, 2, 3], 1, -1) === [1, 2, 3]);
+assert(moverEnLista([1, 2, 3], 3, 1) === [1, 2, 3]);
+assert(moverEnLista([1, 2, 3], 9, 1) === [1, 2, 3]);
+
+// reordenar() contra una base de verdad: SQLite en memoria, sin tocar MySQL
+$sqlite = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$sqlite->exec('CREATE TABLE preguntas (id INTEGER PRIMARY KEY, instrumento_id INT, orden INT, editado_por TEXT)');
+$sqlite->exec('INSERT INTO preguntas VALUES (1, 1, 1, NULL), (2, 1, 2, NULL), (3, 1, 3, NULL), (4, 1, 4, NULL),
+                                            (5, 1, 5, NULL), (9, 2, 1, NULL)');
+$ordenDe = static fn (int $instrumento): array => array_map('intval', $sqlite
+    ->query("SELECT id FROM preguntas WHERE instrumento_id = {$instrumento} ORDER BY orden")
+    ->fetchAll(PDO::FETCH_COLUMN));
+
+// Mover la 5 al lugar 2: las que seguían se recorren solas y quedan 1..n sin huecos
+reordenar($sqlite, 'preguntas', 'instrumento_id', 1, [1, 5, 2, 3, 4]);
+assert($ordenDe(1) === [1, 5, 2, 3, 4]);
+assert($sqlite->query('SELECT GROUP_CONCAT(orden) FROM (SELECT orden FROM preguntas WHERE instrumento_id = 1 ORDER BY orden)')
+    ->fetchColumn() === '1,2,3,4,5');
+
+// La lista debe traer exactamente las preguntas del instrumento: ni faltantes,
+// ni de otro instrumento, ni de más. Si no, nada cambia.
+foreach ([[1, 5, 2, 3], [1, 5, 2, 3, 4, 9], [1, 5, 2, 3, 4, 77]] as $mala) {
+    lanza('lista de preguntas incompleta o ajena debe rechazarse',
+        static fn () => reordenar($sqlite, 'preguntas', 'instrumento_id', 1, $mala));
+}
+assert($ordenDe(1) === [1, 5, 2, 3, 4] && $ordenDe(2) === [9]);
+
+// Orden de una pregunta: en un alta no se pide (crear() la pone al final);
+// al editar es obligatorio y nunca menor que 1
+$preguntas = tablaConfig('preguntas');
+$base      = ['instrumento_id' => '1', 'dimension_id' => '1', 'tipo_id' => '1', 'pregunta' => '<p>¿Ok?</p>'];
+
+assert(saneaEntrada($preguntas, $base, true)['orden'] === null);
+lanza('orden vacío al editar debe rechazarse', static fn () => saneaEntrada($preguntas, $base, false));
+
+foreach (['0', '-3', '1.5'] as $malo) {
+    lanza("orden {$malo} debe rechazarse", static fn () => saneaEntrada($preguntas, $base + ['orden' => $malo], false));
+}
+assert(saneaEntrada($preguntas, $base + ['orden' => '1'], false)['orden'] === '1');
+
 // --- Relaciones N:N ---
 
 // Los identificadores del pivote pasan por la misma barrera que el resto
