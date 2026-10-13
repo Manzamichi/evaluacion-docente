@@ -898,3 +898,85 @@ form [hidden] {
     background: var(--fondo);
     color: var(--acento);
 }
+
+/* Preguntas de un instrumento: ficha arriba y lista que se reordena arrastrando
+   (ordenar.js) o con ↑ ↓. */
+
+.ficha {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+}
+
+.ficha dt {
+    color: var(--suave);
+    font-size: 0.9rem;
+}
+
+.ordenable {
+    list-style: none;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+}
+
+.ordenable li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    cursor: grab;
+}
+
+.ordenable li + li {
+    border-top: 1px solid var(--borde);
+}
+
+.ordenable li.arrastrando {
+    opacity: 0.4;
+}
+
+.ordenable.guardando {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.ordenable .asa {
+    color: var(--suave);
+}
+
+.ordenable .numero {
+    min-width: 1.5rem;
+    font-weight: bold;
+    text-align: right;
+}
+
+.ordenable .texto {
+    flex: 1;
+}
+
+.ordenable .texto small {
+    display: block;
+    color: var(--suave);
+    font-size: 0.8rem;
+}
+
+.ordenable .mover {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.ordenable .mover button {
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+}
+
+/* :target = la pregunta que se acaba de mover (el servidor regresa con #pregunta-id). */
+.ordenable li:target {
+    background: #fff8e1;
+}
