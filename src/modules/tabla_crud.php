@@ -118,6 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Un alta puede llegar con valores ya elegidos: ?accion=nuevo&v[instrumento_id]=2
+// (la "Nueva pregunta" de un instrumento). Solo columnas del formulario, y solo
+// como valor inicial: al guardar pasa por saneaEntrada() igual que todo.
+if ($accion === 'nuevo' && $registro === []) {
+    $registro = array_map('strval', array_filter(
+        array_intersect_key((array) ($_GET['v'] ?? []), $cfg['campos']),
+        'is_scalar'
+    ));
+}
+
 if ($accion === 'editar' && $id > 0 && $registro === []) {
     $registro = obtener($pdo, $tabla, $id) ?? [];
 

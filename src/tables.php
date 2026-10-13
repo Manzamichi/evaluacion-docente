@@ -36,6 +36,9 @@ declare(strict_types=1);
  *                 min, max   Rango de un entero (tipo number). Van en el <input>
  *                            y se vuelven a comprobar al guardar.
  *                 defecto    Valor con el que arranca el campo en un alta
+ *                 al_final_de  Columna de grupo (p. ej. 'instrumento_id'). En un alta
+ *                            el campo no se muestra y crear() pone MAX + 1 de ese
+ *                            grupo: el registro nuevo va al final.
  *   acciones    Enlaces extra por fila hacia otro módulo, que reciben ?id=
  *   ocultar     Columnas que el panel de detalle nunca muestra, porque son
  *               sensibles (tokens, CURP, RFC). Las que ya tienen 'hash' => true
@@ -172,6 +175,9 @@ return [
                 'tipo'     => 'html',
             ],
         ],
+        'acciones' => [
+            ['etiqueta' => 'Preguntas', 'modulo' => 'instrumento/preguntas'],
+        ],
     ],
 
     'dimensiones' => [
@@ -244,11 +250,15 @@ return [
                 'tipo'      => 'html',
                 'requerido' => true,
             ],
-            // Requerido: vacío llega como NULL y la columna es NOT NULL.
+            // En un alta no se pide: la pregunta va al final de su instrumento.
+            // Al editar, mínimo 1. Lo normal es reordenar arrastrando, en
+            // Instrumentos > Preguntas, que recorre solas a las demás.
             'orden' => [
-                'etiqueta'  => 'Orden',
-                'tipo'      => 'number',
-                'requerido' => true,
+                'etiqueta'    => 'Orden',
+                'tipo'        => 'number',
+                'requerido'   => true,
+                'min'         => 1,
+                'al_final_de' => 'instrumento_id',
             ],
         ],
     ],

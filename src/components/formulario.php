@@ -26,6 +26,10 @@ $accion = $nuevo
     <input type="hidden" name="csrf" value="<?= e(csrfToken()) ?>">
 
     <?php foreach ($cfg['campos'] as $col => $campo): ?>
+        <?php // En un alta, el orden lo pone crear() al final de su grupo.
+        if ($nuevo && isset($campo['al_final_de'])) {
+            continue;
+        } ?>
         <?php componente('campo', [
             'col'   => $col,
             'campo' => $campo,

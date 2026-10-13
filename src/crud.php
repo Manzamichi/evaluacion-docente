@@ -523,6 +523,21 @@ function crear(PDO $pdo, string $tabla, array $datos): void
     // la carga masiva de CSV también pasa por esta función.
     $datos['editado_por'] = usuarioActual();
 
+    // 'al_final_de': un alta sin orden va al final de su grupo (la pregunta
+    // nueva, al final de su instrumento). Un CSV que sí trae orden lo respeta.
+    // ponytail: dos altas simultáneas pueden empatar; ORDER BY orden, id las
+    // desempata y reordenar() las separa al primer arrastre.
+    foreach ($cfg['campos'] as $col => $campo) {
+        if (isset($campo['al_final_de']) && ($datos[$col] ?? null) === null) {
+            $stmt = $pdo->prepare(
+                'SELECT COALESCE(MAX(' . ident($col) . '), 0) + 1 FROM ' . ident($tabla)
+                . ' WHERE ' . ident($campo['al_final_de']) . ' = ?'
+            );
+            $stmt->execute([$datos[$campo['al_final_de']] ?? null]);
+            $datos[$col] = (int) $stmt->fetchColumn();
+        }
+    }
+
     $cols       = array_map('ident', array_keys($datos));
     $marcadores = array_fill(0, count($datos), '?');
 
@@ -650,6 +665,74 @@ function pivoteGuardar(PDO $pdo, array $pivote, int $id, array $ajenos): void
 }
 
 /**
+ * Renumera la columna `orden` (1, 2, 3...) de las filas de un grupo (las
+ * preguntas de un instrumento) siguiendo la lista de ids que llega del
+ * formulario, en el orden en que quedaron al arrastrar. Nadie numera a mano:
+ * mover la 5 al lugar 2 recorre solas a las que siguen.
+ *
+ * La lista tiene que traer exactamente las filas del grupo. Si alguien agregó
+ * o borró una mientras la pantalla estaba abierta, se rechaza en vez de dejar
+ * huecos o números repetidos.
+ *
+ * @param int[] $ids
+ */
+function reordenar(PDO $pdo, string $tabla, string $grupo, int $grupoId, array $ids): void
+{
+    tablaConfig($tabla);
+    $t = ident($tabla);
+    $g = ident($grupo);
+
+    $stmt = $pdo->prepare("SELECT id FROM {$t} WHERE {$g} = ?");
+    $stmt->execute([$grupoId]);
+    $actuales = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+    $enviados = $ids;
+    sort($actuales);
+    sort($enviados);
+
+    if ($actuales !== $enviados) {
+        throw new InvalidArgumentException('La lista cambió mientras la ordenabas. Se recargó: vuelve a intentarlo.');
+    }
+
+    $update = $pdo->prepare("UPDATE {$t} SET orden = ?, editado_por = ? WHERE id = ? AND {$g} = ?");
+
+    $pdo->beginTransaction();
+
+    try {
+        foreach (array_values($ids) as $i => $id) {
+            $update->execute([$i + 1, usuarioActual(), $id, $grupoId]);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+
+        throw $e;
+    }
+}
+
+/**
+ * Sube ($paso = -1) o baja ($paso = 1) un id un lugar dentro de la lista. Es lo
+ * que hacen los botones ↑ ↓, que funcionan con teclado, en el celular y sin
+ * JavaScript, donde arrastrar no llega. En los extremos no hace nada.
+ *
+ * @param int[] $ids
+ * @return int[]
+ */
+function moverEnLista(array $ids, int $id, int $paso): array
+{
+    $i = array_search($id, $ids, true);
+
+    if ($i === false || !isset($ids[$i + $paso])) {
+        return $ids;
+    }
+
+    [$ids[$i], $ids[$i + $paso]] = [$ids[$i + $paso], $ids[$i]];
+
+    return $ids;
+}
+
+/**
  * Filas del lado ajeno de un pivote, para llenar la lista de selección.
  * Con 'agrupa' se ordena y se separa por esa columna (las categorías del menú).
  */
@@ -760,7 +843,8 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
             continue;
         }
 
-        if ($valor === '' && !empty($campo['requerido'])) {
+        // Un 'al_final_de' vacío en un alta no falta: crear() lo calcula.
+        if ($valor === '' && !empty($campo['requerido']) && !($esNuevo && isset($campo['al_final_de']))) {
             throw new InvalidArgumentException("{$campo['etiqueta']} es obligatorio.");
         }
 
