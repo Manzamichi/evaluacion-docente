@@ -118,6 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Un alta puede llegar con valores ya elegidos: ?accion=nuevo&v[instrumento_id]=2
+// (la "Nueva pregunta" de un instrumento). Solo columnas del formulario, y solo
+// como valor inicial: al guardar pasa por saneaEntrada() igual que todo.
+if ($accion === 'nuevo' && $registro === []) {
+    $registro = array_map('strval', array_filter(
+        array_intersect_key((array) ($_GET['v'] ?? []), $cfg['campos']),
+        'is_scalar'
+    ));
+}
+
 if ($accion === 'editar' && $id > 0 && $registro === []) {
     $registro = obtener($pdo, $tabla, $id) ?? [];
 
@@ -149,6 +159,12 @@ $listado = $listando
     : ['filas' => [], 'pagina' => 1, 'paginas' => 1, 'total' => 0, 'porPagina' => 0];
 
 $titulo = $cfg['etiqueta'];
+
+// El editor de texto (Quill) solo se carga en el formulario de una tabla que lo usa.
+if (!$listando && in_array('html', array_column($cfg['campos'], 'tipo'), true)) {
+    $css = ['vendor/quill.snow.css'];
+    $js  = ['vendor/quill.js', 'editor.js'];
+}
 
 if ($error !== null) {
     echo '<p class="error">', e($error), '</p>';

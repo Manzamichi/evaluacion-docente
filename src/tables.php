@@ -16,9 +16,17 @@ declare(strict_types=1);
  *   listar      Columnas que se muestran en la tabla del listado
  *   campos      Columnas editables desde el formulario
  *                 etiqueta   Texto del <label>
- *                 tipo       text | email | number | date | textarea | select | password
+ *                 tipo       text | email | number | date | textarea | select | password | pares | html
+ *                            html: editor con formato (Quill). Se guarda HTML pasado
+ *                            por limpiaHtml() (helpers/html.php); la columna, TEXT.
+ *                            pares: lista de opciones valor:respuesta con botones + y −,
+ *                            guardada como "1:Sí,2:No". El valor es entero y la
+ *                            respuesta no lleva comas.
  *                 requerido  true si no puede ir vacío
  *                 opciones   Valores permitidos (solo para tipo select)
+ *                 etiquetas  Texto que muestra cada opción: ['1' => 'Abierta'] (opcional)
+ *                 solo_si    ['otra_columna', 'valor']: el campo solo aplica cuando
+ *                            esa columna vale eso. Si no, se oculta y se guarda NULL.
  *                 opciones_de  Igual que opciones, pero salen de otra tabla:
  *                            ['tabla' => 'categorias', 'muestra' => 'nombre'].
  *                            La tabla debe estar declarada aquí (whitelist).
@@ -28,6 +36,9 @@ declare(strict_types=1);
  *                 min, max   Rango de un entero (tipo number). Van en el <input>
  *                            y se vuelven a comprobar al guardar.
  *                 defecto    Valor con el que arranca el campo en un alta
+ *                 al_final_de  Columna de grupo (p. ej. 'instrumento_id'). En un alta
+ *                            el campo no se muestra y crear() pone MAX + 1 de ese
+ *                            grupo: el registro nuevo va al final.
  *   acciones    Enlaces extra por fila hacia otro módulo, que reciben ?id=
  *   ocultar     Columnas que el panel de detalle nunca muestra, porque son
  *               sensibles (tokens, CURP, RFC). Las que ya tienen 'hash' => true
@@ -161,8 +172,11 @@ return [
             ],
             'instruccion' => [
                 'etiqueta' => 'Instrucción',
-                'tipo'     => 'textarea',
+                'tipo'     => 'html',
             ],
+        ],
+        'acciones' => [
+            ['etiqueta' => 'Preguntas', 'modulo' => 'instrumento/preguntas'],
         ],
     ],
 
@@ -184,7 +198,7 @@ return [
 
     'tipo_preguntas' => [
         'etiqueta' => 'Tipos de pregunta',
-        'listar'   => ['id', 'nombre', 'tipo'],
+        'listar'   => ['id', 'nombre', 'tipo', 'respuesta'],
         'campos'   => [
             'nombre' => [
                 'etiqueta'  => 'Nombre',
@@ -193,17 +207,18 @@ return [
             ],
             'tipo' => [
                 'etiqueta'  => 'Tipo',
-                'tipo'      => 'number',
+                'tipo'      => 'select',
                 'requerido' => true,
-                'min'       => 1,
-                'max'       => 255, // tope de TINYINT UNSIGNED
-                'defecto'   => 1,
+                'opciones'  => ['1', '2', '3'],
+                'etiquetas' => ['1' => 'Instrucción', '2' => 'Abierta', '3' => 'Opción múltiple'],
             ],
-            // Opcional: un tipo "instrucciones" se muestra en el instrumento
-            // pero no espera respuesta.
+            // Solo la opción múltiple tiene respuestas; instrucción y abierta
+            // se guardan con NULL.
             'respuesta' => [
-                'etiqueta' => 'Respuesta',
-                'tipo'     => 'textarea',
+                'etiqueta'  => 'Respuestas',
+                'tipo'      => 'pares',
+                'requerido' => true,
+                'solo_si'   => ['tipo', '3'],
             ],
         ],
     ],
@@ -232,14 +247,18 @@ return [
             ],
             'pregunta' => [
                 'etiqueta'  => 'Pregunta',
-                'tipo'      => 'textarea',
+                'tipo'      => 'html',
                 'requerido' => true,
             ],
-            // Requerido: vacío llega como NULL y la columna es NOT NULL.
+            // En un alta no se pide: la pregunta va al final de su instrumento.
+            // Al editar, mínimo 1. Lo normal es reordenar arrastrando, en
+            // Instrumentos > Preguntas, que recorre solas a las demás.
             'orden' => [
-                'etiqueta'  => 'Orden',
-                'tipo'      => 'number',
-                'requerido' => true,
+                'etiqueta'    => 'Orden',
+                'tipo'        => 'number',
+                'requerido'   => true,
+                'min'         => 1,
+                'al_final_de' => 'instrumento_id',
             ],
         ],
     ],

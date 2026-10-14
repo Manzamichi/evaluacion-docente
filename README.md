@@ -149,6 +149,26 @@ guarda el id) y `password` (con `hash => true`). Un `number` acepta `min` y
 `max` (se ponen en el `<input>` y se vuelven a validar al guardar), y cualquier
 campo acepta `defecto`, el valor con el que arranca en un alta.
 
+Un `select` con `opciones` fijas puede mostrar otro texto con `etiquetas`
+(`['1' => 'Abierta']`). El tipo `pares` es una lista de opciones valor/respuesta
+con botones + y −; se guarda como `1:Sí,2:No`, así que el valor es entero y la
+respuesta no lleva comas. Con `'solo_si' => ['tipo', '3']` un campo solo aplica
+cuando otra columna tiene ese valor: se oculta en el formulario y se guarda NULL.
+
+Un campo de orden con `'al_final_de' => 'instrumento_id'` no se pide en el alta:
+`crear()` pone el siguiente número de ese grupo y el registro nuevo queda al
+final. Un alta también puede llegar con valores ya elegidos en la url,
+`?accion=nuevo&v[instrumento_id]=2`; solo se toman columnas del formulario y
+solo como valor inicial.
+
+El tipo `html` es un editor con formato ([Quill](https://quilljs.com) 2, BSD,
+copiado en `public/assets/js/vendor/` y `css/vendor/`; sin CDN ni build). Se
+carga solo en el formulario de una tabla que lo use. Guarda HTML en una columna
+`TEXT`, siempre pasado por `limpiaHtml()` (`src/helpers/html.php`): una lista
+blanca de etiquetas (párrafos, negritas, listas, encabezados, enlaces http/https/
+mailto) donde todo lo demás se quita. En el listado sale como texto plano y en
+el panel de detalle con su formato.
+
 El listado se pagina solo: 10 filas por página, o las que diga `por_pagina` en
 la tabla. La búsqueda y la paginación se combinan — el conteo de páginas se hace
 sobre los resultados filtrados, y buscar de nuevo vuelve a la página 1.
@@ -284,6 +304,18 @@ $titulo = 'Reporte general';
 
 Falta insertarlo en la tabla `modulos` y asignarlo a un grupo para que aparezca.
 
+### Ejemplo real: ordenar las preguntas de un instrumento
+
+`instrumento/preguntas` (`src/modules/instrumento_preguntas.php`) lista las
+preguntas de un instrumento y las reordena arrastrando (`ordenar.js`) o con
+botones ↑ ↓, que funcionan con teclado, en celular y sin JavaScript. En los dos
+casos se manda la lista completa de ids en su nuevo orden y
+`reordenar($pdo, 'preguntas', 'instrumento_id', $id, $ids)` renumera `orden` de
+1 a n en una transacción: nadie corrige a mano los números de las demás. Si la
+lista no trae exactamente las preguntas del instrumento (alguien agregó o borró
+una mientras tanto) se rechaza y no cambia nada. Sirve igual para cualquier
+tabla con columna `orden`.
+
 ## Componentes
 
 `src/components/` guarda las piezas de interfaz. Un componente **recibe props y
@@ -320,8 +352,9 @@ variable que "ya andaba por ahí".
 
 ### Reglas que no se rompen
 
-- **Todo lo que salga a HTML pasa por `e()`.** Sin excepciones, aunque el dato
-  venga de la base de datos.
+- **Todo lo que salga a HTML pasa por `e()`.** Aunque el dato venga de la base
+  de datos. La única excepción es un campo `html`, que sale por `limpiaHtml()`
+  al momento de imprimirse, nunca crudo ni confiando en que se limpió al guardar.
 - **Todo POST llama a `verificaCsrf()`** antes de tocar nada, y el formulario
   incluye `<input type="hidden" name="csrf" value="<?= e(csrfToken()) ?>">`.
 - **Nunca concatenar variables dentro del SQL.** Valores con `?` y

@@ -83,7 +83,8 @@ $acciones = array_values(array_filter(
             <?php foreach ($filas as $fila): ?>
                 <tr>
                     <?php foreach ($cfg['listar'] as $col): ?>
-                        <td><?= e($fila[$col] ?? '') ?></td>
+                        <?php // Un campo 'html' sale como texto: el formato se ve en el detalle. ?>
+                        <td><?= e(($cfg['campos'][$col]['tipo'] ?? '') === 'html' ? textoPlano((string) $fila[$col]) : ($fila[$col] ?? '')) ?></td>
                     <?php endforeach; ?>
                     <td class="acciones">
                         <a class="lupa" href="#detalle-<?= (int) $fila['id'] ?>" aria-label="Ver detalle del registro <?= (int) $fila['id'] ?>">

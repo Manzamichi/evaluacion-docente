@@ -26,12 +26,21 @@ $accion = $nuevo
     <input type="hidden" name="csrf" value="<?= e(csrfToken()) ?>">
 
     <?php foreach ($cfg['campos'] as $col => $campo): ?>
+        <?php // En un alta, el orden lo pone crear() al final de su grupo.
+        if ($nuevo && isset($campo['al_final_de'])) {
+            continue;
+        } ?>
         <?php componente('campo', [
             'col'   => $col,
             'campo' => $campo,
             // Un hash nunca se devuelve al formulario: el campo va en blanco y
-            // vacío significa "no cambiar".
-            'valor' => !empty($campo['hash']) ? '' : (string) ($registro[$col] ?? ''),
+            // vacío significa "no cambiar". Un 'pares' que vuelve de un POST
+            // con error es array: se le pasa tal cual para no perder las filas.
+            'valor' => match (true) {
+                !empty($campo['hash'])          => '',
+                is_array($registro[$col] ?? '') => $registro[$col],
+                default                         => (string) ($registro[$col] ?? ''),
+            },
             'nuevo' => $nuevo,
         ]); ?>
     <?php endforeach; ?>

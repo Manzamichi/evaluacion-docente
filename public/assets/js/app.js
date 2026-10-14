@@ -1,7 +1,51 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('evaluacion_docente - listo');
     inicializarDualbox();
+    inicializarPares();
+    inicializarSoloSi();
 });
+
+/**
+ * Campo 'pares' (opciones valor/respuesta). "+" agrega una fila vacía copiando
+ * la última; "−" quita la última, pero siempre deja una. Sin JavaScript el
+ * formulario sigue sirviendo con las filas que ya trae.
+ */
+function inicializarPares() {
+    document.querySelectorAll('.pares').forEach((campo) => {
+        const filas = campo.querySelector('.pares-filas');
+
+        campo.querySelector('[data-pares="agregar"]').addEventListener('click', () => {
+            const nueva = filas.lastElementChild.cloneNode(true);
+            nueva.querySelectorAll('input').forEach((input) => { input.value = ''; });
+            filas.appendChild(nueva);
+            nueva.querySelector('input').focus();
+        });
+
+        campo.querySelector('[data-pares="quitar"]').addEventListener('click', () => {
+            if (filas.children.length > 1) {
+                filas.lastElementChild.remove();
+            }
+        });
+    });
+}
+
+/**
+ * Campos con 'solo_si' en tables.php: se ocultan mientras la otra columna no
+ * tenga el valor esperado. Es solo vista; el servidor guarda NULL de todos modos.
+ */
+function inicializarSoloSi() {
+    document.querySelectorAll('[data-solo-si]').forEach((campo) => {
+        const otra = campo.closest('form').elements[campo.dataset.soloSi];
+
+        if (!otra) {
+            return;
+        }
+
+        const actualizar = () => { campo.hidden = otra.value !== campo.dataset.soloSiValor; };
+        otra.addEventListener('change', actualizar);
+        actualizar();
+    });
+}
 
 /**
  * Dual list box para la asignación N:N (permisos de un grupo, usuarios de un

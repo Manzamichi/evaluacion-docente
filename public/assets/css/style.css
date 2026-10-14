@@ -349,6 +349,63 @@ form small {
     font-size: 0.8rem;
 }
 
+/* 'form label' fija display: block, que le gana al atributo hidden de solo_si. */
+form [hidden] {
+    display: none;
+}
+
+/* Campo 'pares': opciones valor/respuesta con botones + y −. */
+
+.pares {
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+    padding: 0.75rem 1rem;
+    margin: 0 0 1rem;
+}
+
+.pares legend {
+    font-size: 0.9rem;
+    color: var(--suave);
+    padding: 0 0.25rem;
+}
+
+.pares-fila {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    gap: 0.75rem;
+}
+
+.pares-fila label {
+    margin-bottom: 0.5rem;
+}
+
+/* Campo 'html': editor Quill. Su CSS (vendor/quill.snow.css) pone la barra. */
+
+.campo-html {
+    margin-bottom: 1rem;
+}
+
+.campo-html > span {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--suave);
+}
+
+.campo-html .ql-container {
+    min-height: 10rem;
+    font: inherit;
+}
+
+/* Texto guardado desde el editor, fuera de él. Quill alinea y sangra con clases. */
+
+.texto-html .ql-align-center { text-align: center; }
+.texto-html .ql-align-right { text-align: right; }
+.texto-html .ql-align-justify { text-align: justify; }
+.texto-html .ql-indent-1 { padding-left: 3em; }
+.texto-html .ql-indent-2 { padding-left: 6em; }
+.texto-html .ql-indent-3 { padding-left: 9em; }
+
 .acciones-form {
     display: flex;
     align-items: center;
@@ -840,4 +897,86 @@ form small {
 .selector a:hover {
     background: var(--fondo);
     color: var(--acento);
+}
+
+/* Preguntas de un instrumento: ficha arriba y lista que se reordena arrastrando
+   (ordenar.js) o con ↑ ↓. */
+
+.ficha {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+}
+
+.ficha dt {
+    color: var(--suave);
+    font-size: 0.9rem;
+}
+
+.ordenable {
+    list-style: none;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+}
+
+.ordenable li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    cursor: grab;
+}
+
+.ordenable li + li {
+    border-top: 1px solid var(--borde);
+}
+
+.ordenable li.arrastrando {
+    opacity: 0.4;
+}
+
+.ordenable.guardando {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.ordenable .asa {
+    color: var(--suave);
+}
+
+.ordenable .numero {
+    min-width: 1.5rem;
+    font-weight: bold;
+    text-align: right;
+}
+
+.ordenable .texto {
+    flex: 1;
+}
+
+.ordenable .texto small {
+    display: block;
+    color: var(--suave);
+    font-size: 0.8rem;
+}
+
+.ordenable .mover {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.ordenable .mover button {
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+}
+
+/* :target = la pregunta que se acaba de mover (el servidor regresa con #pregunta-id). */
+.ordenable li:target {
+    background: #fff8e1;
 }

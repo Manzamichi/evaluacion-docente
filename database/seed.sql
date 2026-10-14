@@ -42,6 +42,7 @@ INSERT INTO modulos (nombre, descripcion, url, categoria, orden) VALUES
     ('Usuarios del grupo', 'Miembros de un grupo','grupo/usuarios', 'Seguridad', 50),
     ('Grupos del usuario', 'Roles de una cuenta', 'usuario/grupos', 'Seguridad', 60),
     ('Instrumentos', 'Instrumentos de evaluación',  'instrumento/admin',   'Instrumentos', 10),
+    ('Preguntas del instrumento', 'Ver y ordenar sus preguntas', 'instrumento/preguntas', 'Instrumentos', 15),
     ('Preguntas',    'Preguntas de cada instrumento', 'pregunta/admin',    'Instrumentos', 20),
     ('Dimensiones',  'Dimensiones que agrupan preguntas', 'dimension/admin', 'Instrumentos', 30),
     ('Tipos de pregunta', 'Formatos de respuesta', 'tipo_pregunta/admin', 'Instrumentos', 40)

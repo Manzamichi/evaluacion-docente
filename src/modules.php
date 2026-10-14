@@ -82,7 +82,17 @@ return [
         'acciones' => [
             ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
             ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            ['etiqueta' => 'Preguntas de un instrumento', 'modulo' => 'instrumento/preguntas'],
         ],
+    ],
+
+    // Lista las preguntas de un instrumento y las reordena. Se llega desde el
+    // panel de detalle de un instrumento, o desde el menú (pregunta cuál).
+    'instrumento/preguntas' => [
+        'archivo' => 'instrumento_preguntas.php',
+        'titulo'  => 'Preguntas del instrumento',
+        'oculto'  => true,
+        'volver'  => 'instrumento/admin',
     ],
 
     'pregunta/admin' => [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/helpers/validation.php';
+require_once __DIR__ . '/helpers/html.php';
 
 /**
  * Devuelve la configuración de todas las tablas declaradas en tables.php.
@@ -522,6 +523,21 @@ function crear(PDO $pdo, string $tabla, array $datos): void
     // la carga masiva de CSV también pasa por esta función.
     $datos['editado_por'] = usuarioActual();
 
+    // 'al_final_de': un alta sin orden va al final de su grupo (la pregunta
+    // nueva, al final de su instrumento). Un CSV que sí trae orden lo respeta.
+    // ponytail: dos altas simultáneas pueden empatar; ORDER BY orden, id las
+    // desempata y reordenar() las separa al primer arrastre.
+    foreach ($cfg['campos'] as $col => $campo) {
+        if (isset($campo['al_final_de']) && ($datos[$col] ?? null) === null) {
+            $stmt = $pdo->prepare(
+                'SELECT COALESCE(MAX(' . ident($col) . '), 0) + 1 FROM ' . ident($tabla)
+                . ' WHERE ' . ident($campo['al_final_de']) . ' = ?'
+            );
+            $stmt->execute([$datos[$campo['al_final_de']] ?? null]);
+            $datos[$col] = (int) $stmt->fetchColumn();
+        }
+    }
+
     $cols       = array_map('ident', array_keys($datos));
     $marcadores = array_fill(0, count($datos), '?');
 
@@ -649,6 +665,74 @@ function pivoteGuardar(PDO $pdo, array $pivote, int $id, array $ajenos): void
 }
 
 /**
+ * Renumera la columna `orden` (1, 2, 3...) de las filas de un grupo (las
+ * preguntas de un instrumento) siguiendo la lista de ids que llega del
+ * formulario, en el orden en que quedaron al arrastrar. Nadie numera a mano:
+ * mover la 5 al lugar 2 recorre solas a las que siguen.
+ *
+ * La lista tiene que traer exactamente las filas del grupo. Si alguien agregó
+ * o borró una mientras la pantalla estaba abierta, se rechaza en vez de dejar
+ * huecos o números repetidos.
+ *
+ * @param int[] $ids
+ */
+function reordenar(PDO $pdo, string $tabla, string $grupo, int $grupoId, array $ids): void
+{
+    tablaConfig($tabla);
+    $t = ident($tabla);
+    $g = ident($grupo);
+
+    $stmt = $pdo->prepare("SELECT id FROM {$t} WHERE {$g} = ?");
+    $stmt->execute([$grupoId]);
+    $actuales = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+    $enviados = $ids;
+    sort($actuales);
+    sort($enviados);
+
+    if ($actuales !== $enviados) {
+        throw new InvalidArgumentException('La lista cambió mientras la ordenabas. Se recargó: vuelve a intentarlo.');
+    }
+
+    $update = $pdo->prepare("UPDATE {$t} SET orden = ?, editado_por = ? WHERE id = ? AND {$g} = ?");
+
+    $pdo->beginTransaction();
+
+    try {
+        foreach (array_values($ids) as $i => $id) {
+            $update->execute([$i + 1, usuarioActual(), $id, $grupoId]);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+
+        throw $e;
+    }
+}
+
+/**
+ * Sube ($paso = -1) o baja ($paso = 1) un id un lugar dentro de la lista. Es lo
+ * que hacen los botones ↑ ↓, que funcionan con teclado, en el celular y sin
+ * JavaScript, donde arrastrar no llega. En los extremos no hace nada.
+ *
+ * @param int[] $ids
+ * @return int[]
+ */
+function moverEnLista(array $ids, int $id, int $paso): array
+{
+    $i = array_search($id, $ids, true);
+
+    if ($i === false || !isset($ids[$i + $paso])) {
+        return $ids;
+    }
+
+    [$ids[$i], $ids[$i + $paso]] = [$ids[$i + $paso], $ids[$i]];
+
+    return $ids;
+}
+
+/**
  * Filas del lado ajeno de un pivote, para llenar la lista de selección.
  * Con 'agrupa' se ordena y se separa por esa columna (las categorías del menú).
  */
@@ -729,7 +813,21 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
     $datos = [];
 
     foreach ($cfg['campos'] as $col => $campo) {
-        $valor = trim((string) ($entrada[$col] ?? ''));
+        // Un campo con 'solo_si' que no aplica se guarda vacío, venga lo que venga.
+        if (isset($campo['solo_si'])) {
+            [$otra, $esperado] = $campo['solo_si'];
+
+            if (trim((string) ($entrada[$otra] ?? '')) !== $esperado) {
+                $datos[$col] = null;
+                continue;
+            }
+        }
+
+        $valor = match ($campo['tipo']) {
+            'pares' => textoDePares(filasDePares($entrada[$col] ?? ''), $campo['etiqueta']),
+            'html'  => limpiaHtml((string) ($entrada[$col] ?? '')),
+            default => trim((string) ($entrada[$col] ?? '')),
+        };
 
         if (!empty($campo['hash'])) {
             if ($valor === '') {
@@ -745,7 +843,8 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
             continue;
         }
 
-        if ($valor === '' && !empty($campo['requerido'])) {
+        // Un 'al_final_de' vacío en un alta no falta: crear() lo calcula.
+        if ($valor === '' && !empty($campo['requerido']) && !($esNuevo && isset($campo['al_final_de']))) {
             throw new InvalidArgumentException("{$campo['etiqueta']} es obligatorio.");
         }
 
@@ -773,6 +872,68 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
     }
 
     return $datos;
+}
+
+/**
+ * Filas [valor, texto] de un campo 'pares'. Acepta las dos formas en que llega:
+ * el texto guardado ("1:Sí,2:No", también lo que trae un CSV) o el POST del
+ * formulario (['valor' => [...], 'texto' => [...]]).
+ */
+function filasDePares(array|string $entrada): array
+{
+    if (is_array($entrada)) {
+        return array_map(
+            static fn ($v, $t) => [trim((string) $v), trim((string) $t)],
+            (array) ($entrada['valor'] ?? []),
+            (array) ($entrada['texto'] ?? [])
+        );
+    }
+
+    if (trim($entrada) === '') {
+        return [];
+    }
+
+    return array_map(static function (string $par): array {
+        $partes = explode(':', $par, 2);
+
+        return [trim($partes[0]), trim($partes[1] ?? '')];
+    }, explode(',', $entrada));
+}
+
+/**
+ * Valida las filas de un campo 'pares' y las une en el texto que se guarda.
+ * Las filas vacías se ignoran: es lo que deja el botón "+" sin llenar.
+ */
+function textoDePares(array $filas, string $etiqueta): string
+{
+    $pares = [];
+
+    foreach ($filas as [$valor, $texto]) {
+        if ($valor === '' && $texto === '') {
+            continue;
+        }
+
+        if ($valor === '' || $texto === '') {
+            throw new InvalidArgumentException("{$etiqueta}: cada opción necesita valor y respuesta.");
+        }
+
+        if (filter_var($valor, FILTER_VALIDATE_INT) === false) {
+            throw new InvalidArgumentException("{$etiqueta}: el valor \"{$valor}\" debe ser un entero.");
+        }
+
+        // La coma separa las opciones al guardarlas: dentro de una partiría la fila.
+        if (str_contains($texto, ',')) {
+            throw new InvalidArgumentException("{$etiqueta}: la respuesta \"{$texto}\" no puede llevar comas.");
+        }
+
+        if (isset($pares[$valor])) {
+            throw new InvalidArgumentException("{$etiqueta}: el valor {$valor} está repetido.");
+        }
+
+        $pares[$valor] = "{$valor}:{$texto}";
+    }
+
+    return implode(',', $pares);
 }
 
 /**
