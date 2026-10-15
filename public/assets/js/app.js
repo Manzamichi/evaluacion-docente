@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inicializarDualbox();
     inicializarPares();
     inicializarSoloSi();
+    inicializarPasswordToggle();
 });
 
 /**
@@ -191,4 +192,33 @@ function inicializarDualbox() {
             });
         });
     }
+}
+
+/**
+ * Botón dentro del campo de contraseña para mostrarla u ocultarla. Está
+ * 'hidden' en el HTML y solo se revela aquí, así que sin JavaScript no queda
+ * un botón muerto.
+ */
+function inicializarPasswordToggle() {
+    document.querySelectorAll('.password-campo').forEach((campo) => {
+        const input = campo.querySelector('input');
+        const boton = campo.querySelector('.password-toggle');
+        if (!input || !boton) {
+            return;
+        }
+
+        const abierto = boton.querySelector('.ojo-abierto');
+        const cerrado = boton.querySelector('.ojo-cerrado');
+        boton.hidden = false;
+
+        boton.addEventListener('click', () => {
+            const mostrar = input.type === 'password';
+            input.type = mostrar ? 'text' : 'password';
+            boton.setAttribute('aria-pressed', String(mostrar));
+            boton.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            abierto.hidden = mostrar;
+            cerrado.hidden = !mostrar;
+            input.focus();
+        });
+    });
 }
