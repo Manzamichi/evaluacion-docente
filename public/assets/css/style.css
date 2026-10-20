@@ -659,6 +659,43 @@ form [hidden] {
     color: var(--suave);
 }
 
+/* Botón de ojo dentro del input de contraseña. */
+.password-campo {
+    position: relative;
+}
+
+.password-campo input {
+    padding-right: 2.5rem;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.4rem;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--suave);
+    cursor: pointer;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+    color: var(--azul);
+}
+
+.password-toggle[hidden],
+.password-toggle svg[hidden] {
+    display: none;
+}
+
 .login-box .error {
     margin: 1rem 0;
 }
