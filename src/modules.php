@@ -48,6 +48,15 @@ return [
         ],
     ],
 
+    // Sin 'Importar CSV': cada profesor necesita su usuario y contraseña, igual
+    // que en usuario/admin.
+    'profesor/admin' => [
+        'crud'     => 'profesores',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+        ],
+    ],
+
     'grupo/admin' => [
         'crud'     => 'grupos',
         'acciones' => [

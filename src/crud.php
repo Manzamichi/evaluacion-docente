@@ -406,12 +406,30 @@ function ventanaPaginas(int $pagina, int $paginas, int $ventana = 3): array
 
 function obtener(PDO $pdo, string $tabla, int $id): ?array
 {
-    tablaConfig($tabla);
+    $cfg    = tablaConfig($tabla);
+    $propio = $cfg['usuario_propio'] ?? null;
 
     $stmt = $pdo->prepare('SELECT * FROM ' . ident($tabla) . ' WHERE id = ?');
     $stmt->execute([$id]);
+    $fila = $stmt->fetch() ?: null;
 
-    return $stmt->fetch() ?: null;
+    // Los campos 'de_usuario' viven en `usuarios`: el formulario de edición
+    // los necesita junto al registro. Nunca el hash.
+    if ($fila === null || $propio === null) {
+        return $fila;
+    }
+
+    $cols = array_keys(array_filter(
+        $cfg['campos'],
+        static fn (array $campo): bool => !empty($campo['de_usuario']) && empty($campo['hash'])
+    ));
+
+    $stmt = $pdo->prepare(
+        'SELECT ' . implode(', ', array_map('ident', $cols)) . ' FROM usuarios WHERE id = ?'
+    );
+    $stmt->execute([$fila[$propio['columna']]]);
+
+    return $fila + ($stmt->fetch() ?: []);
 }
 
 /**
@@ -515,9 +533,15 @@ function verificaUnicidad(PDO $pdo, string $tabla, array $cfg, array $datos, int
 
 function crear(PDO $pdo, string $tabla, array $datos): void
 {
-    $cfg = tablaConfig($tabla);
+    $cfg     = tablaConfig($tabla);
+    $propio  = $cfg['usuario_propio'] ?? null;
+    $usuario = $propio !== null ? filaDeUsuario($cfg, $datos) : null;
 
     verificaUnicidad($pdo, $tabla, $cfg, $datos);
+
+    if ($usuario !== null) {
+        verificaUnicidad($pdo, 'usuarios', $cfg, $usuario);
+    }
 
     // Se pone aquí y no en saneaEntrada() para que ningún alta pueda saltárselo:
     // la carga masiva de CSV también pasa por esta función.
@@ -538,37 +562,53 @@ function crear(PDO $pdo, string $tabla, array $datos): void
         }
     }
 
-    $cols       = array_map('ident', array_keys($datos));
-    $marcadores = array_fill(0, count($datos), '?');
+    if ($usuario === null) {
+        insertarFila($pdo, $tabla, $datos);
+        return;
+    }
 
-    $sql = 'INSERT INTO ' . ident($tabla)
-        . ' (' . implode(', ', $cols) . ')'
-        . ' VALUES (' . implode(', ', $marcadores) . ')';
+    // Registro y usuario se crean juntos o no se crea ninguno.
+    enTransaccion($pdo, static function () use ($pdo, $tabla, $datos, $usuario, $propio): void {
+        insertarFila($pdo, 'usuarios', $usuario + ['editado_por' => $datos['editado_por']]);
+        $usuarioId = (int) $pdo->lastInsertId();
 
-    $pdo->prepare($sql)->execute(array_values($datos));
+        if (isset($propio['grupo'])) {
+            $pdo->prepare('INSERT INTO usuario_grupo (usuario_id, grupo_id) SELECT ?, id FROM grupos WHERE nombre = ?')
+                ->execute([$usuarioId, $propio['grupo']]);
+        }
+
+        insertarFila($pdo, $tabla, $datos + [$propio['columna'] => $usuarioId]);
+    });
 }
 
 function actualizar(PDO $pdo, string $tabla, int $id, array $datos): void
 {
-    $cfg = tablaConfig($tabla);
+    $cfg     = tablaConfig($tabla);
+    $propio  = $cfg['usuario_propio'] ?? null;
+    $usuario = $propio !== null ? filaDeUsuario($cfg, $datos) : null;
 
     verificaUnicidad($pdo, $tabla, $cfg, $datos, $id);
 
     $datos['editado_por'] = usuarioActual();
 
-    $asignaciones = implode(', ', array_map(
-        static fn (string $col): string => ident($col) . ' = ?',
-        array_keys($datos)
-    ));
+    if ($usuario === null) {
+        actualizarFila($pdo, $tabla, $id, $datos);
+        return;
+    }
 
-    $sql = 'UPDATE ' . ident($tabla) . ' SET ' . $asignaciones . ' WHERE id = ?';
+    $usuarioId = usuarioDe($pdo, $tabla, $propio['columna'], $id);
 
-    $pdo->prepare($sql)->execute([...array_values($datos), $id]);
+    verificaUnicidad($pdo, 'usuarios', $cfg, $usuario, $usuarioId);
+
+    enTransaccion($pdo, static function () use ($pdo, $tabla, $id, $datos, $usuario, $usuarioId): void {
+        actualizarFila($pdo, $tabla, $id, $datos);
+        actualizarFila($pdo, 'usuarios', $usuarioId, $usuario + ['editado_por' => $datos['editado_por']]);
+    });
 }
 
 function eliminar(PDO $pdo, string $tabla, int $id): void
 {
-    tablaConfig($tabla);
+    $propio = tablaConfig($tabla)['usuario_propio'] ?? null;
 
     // Un grupo administrador es la única puerta al módulo de seguridad: si se
     // borra el último, nadie queda con permiso para repartir permisos y el
@@ -582,7 +622,97 @@ function eliminar(PDO $pdo, string $tabla, int $id): void
         }
     }
 
-    $pdo->prepare('DELETE FROM ' . ident($tabla) . ' WHERE id = ?')->execute([$id]);
+    if ($propio === null) {
+        $pdo->prepare('DELETE FROM ' . ident($tabla) . ' WHERE id = ?')->execute([$id]);
+        return;
+    }
+
+    // El registro es dueño de su usuario: se van juntos o no se va ninguno.
+    // El usuario va después porque la FK del registro lo bloquea (RESTRICT).
+    enTransaccion($pdo, static function () use ($pdo, $tabla, $id, $propio): void {
+        $usuarioId = usuarioDe($pdo, $tabla, $propio['columna'], $id);
+
+        $pdo->prepare('DELETE FROM ' . ident($tabla) . ' WHERE id = ?')->execute([$id]);
+        $pdo->prepare('DELETE FROM usuarios WHERE id = ?')->execute([$usuarioId]);
+    });
+}
+
+// --- Registros dueños de un usuario ('usuario_propio' en tables.php) ---
+
+/**
+ * Saca de $datos los campos 'de_usuario' y arma con ellos la fila de
+ * `usuarios`, más nombre y correo copiados del propio registro. Así el
+ * registro y su usuario no se separan: se guardan siempre juntos.
+ */
+function filaDeUsuario(array $cfg, array &$datos): array
+{
+    $propio = $cfg['usuario_propio'];
+    $fila   = [];
+
+    foreach ($cfg['campos'] as $col => $campo) {
+        if (!empty($campo['de_usuario']) && array_key_exists($col, $datos)) {
+            $fila[$col] = $datos[$col];
+            unset($datos[$col]);
+        }
+    }
+
+    $partes = array_map(static fn (string $col): string => (string) ($datos[$col] ?? ''), $propio['nombre']);
+
+    $fila['nombre'] = implode(' ', array_filter($partes, static fn (string $p): bool => $p !== ''));
+    $fila['correo'] = $datos[$propio['correo']] ?? null;
+
+    return $fila;
+}
+
+/** usuarios.id del registro; falla si el registro no existe. */
+function usuarioDe(PDO $pdo, string $tabla, string $columna, int $id): int
+{
+    $stmt = $pdo->prepare('SELECT ' . ident($columna) . ' FROM ' . ident($tabla) . ' WHERE id = ?');
+    $stmt->execute([$id]);
+    $usuarioId = $stmt->fetchColumn();
+
+    if ($usuarioId === false) {
+        throw new InvalidArgumentException('Registro no encontrado.');
+    }
+
+    return (int) $usuarioId;
+}
+
+function insertarFila(PDO $pdo, string $tabla, array $datos): void
+{
+    $cols       = array_map('ident', array_keys($datos));
+    $marcadores = array_fill(0, count($datos), '?');
+
+    $sql = 'INSERT INTO ' . ident($tabla)
+        . ' (' . implode(', ', $cols) . ')'
+        . ' VALUES (' . implode(', ', $marcadores) . ')';
+
+    $pdo->prepare($sql)->execute(array_values($datos));
+}
+
+function actualizarFila(PDO $pdo, string $tabla, int $id, array $datos): void
+{
+    $asignaciones = implode(', ', array_map(
+        static fn (string $col): string => ident($col) . ' = ?',
+        array_keys($datos)
+    ));
+
+    $sql = 'UPDATE ' . ident($tabla) . ' SET ' . $asignaciones . ' WHERE id = ?';
+
+    $pdo->prepare($sql)->execute([...array_values($datos), $id]);
+}
+
+function enTransaccion(PDO $pdo, callable $fn): void
+{
+    $pdo->beginTransaction();
+
+    try {
+        $fn();
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 }
 
 // --- Relaciones N:N (usuario_grupo, grupo_modulo) ---

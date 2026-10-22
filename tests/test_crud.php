@@ -426,4 +426,39 @@ lanza('archivo vacío debe rechazarse', static fn () => leerCsv($ruta, ['nombre'
 
 unlink($ruta);
 
+// --- Profesores: el usuario se guarda aparte ---
+
+$cfgProf = tablaConfig('profesores');
+$datos   = saneaEntrada($cfgProf, [
+    'clave'            => 'P1',
+    'nombres'          => 'Ana',
+    'apellido_paterno' => 'López',
+    'apellido_materno' => 'Pérez',
+    'grado'            => '',
+    'correo'           => 'ana@x.mx',
+    'usuario'          => 'ana.lopez',
+    'password_hash'    => 'Secreta123!',
+    'activo'           => '1',
+], true);
+
+$usuario = filaDeUsuario($cfgProf, $datos);
+
+// Los campos de usuario salen del registro y no llegan al INSERT de profesores
+assert(!isset($datos['usuario']) && !isset($datos['password_hash']) && !isset($datos['activo']));
+assert($usuario['usuario'] === 'ana.lopez' && $usuario['activo'] === '1');
+assert(password_verify('Secreta123!', $usuario['password_hash']));
+// nombre y correo del usuario se copian del registro
+assert($usuario['nombre'] === 'Ana López Pérez' && $usuario['correo'] === 'ana@x.mx');
+
+// Al editar, contraseña vacía = no cambiar: no viaja al UPDATE de usuarios
+$datos   = saneaEntrada($cfgProf, ['password_hash' => ''] + $datos + ['usuario' => 'ana.lopez', 'activo' => '0'], false);
+$usuario = filaDeUsuario($cfgProf, $datos);
+assert(!array_key_exists('password_hash', $usuario) && $usuario['activo'] === '0');
+
+lanza('estado fuera de 1/0 debe rechazarse', static fn () => saneaEntrada(
+    $cfgProf,
+    ['activo' => '2'] + $datos + ['usuario' => 'ana.lopez'],
+    false
+));
+
 echo "OK: todas las comprobaciones pasaron.\n";

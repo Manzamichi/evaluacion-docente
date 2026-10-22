@@ -44,6 +44,14 @@ declare(strict_types=1);
  *               sensibles (tokens, CURP, RFC). Las que ya tienen 'hash' => true
  *               se excluyen solas. Una columna sensible se declara aquí, o se
  *               muestra: el panel enseña todo lo que la tabla tiene en la base.
+ *   usuario_propio  El registro es dueño de un usuario (profesor, alumno): se
+ *               crea, edita y elimina con él, en la misma transacción.
+ *                 columna  FK a usuarios.id (p. ej. 'usuario_id')
+ *                 nombre   Columnas que, unidas con espacio, son usuarios.nombre
+ *                 correo   Columna que se copia a usuarios.correo
+ *                 grupo    Grupo (grupos.nombre) que recibe el usuario al alta
+ *               Los campos con 'de_usuario' => true se piden en el formulario
+ *               pero se guardan en `usuarios`, no en esta tabla.
  *
  * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
  * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.
@@ -83,6 +91,73 @@ return [
         ],
         'acciones' => [
             ['etiqueta' => 'Grupos', 'modulo' => 'usuario/grupos'],
+        ],
+    ],
+
+    'profesores' => [
+        'etiqueta'       => 'Profesores',
+        'listar'         => ['id', 'clave', 'nombres', 'apellido_paterno', 'apellido_materno', 'grado'],
+        // usuario_id no se edita: el usuario nace y muere con el profesor.
+        'usuario_propio' => [
+            'columna' => 'usuario_id',
+            'nombre'  => ['nombres', 'apellido_paterno', 'apellido_materno'],
+            'correo'  => 'correo',
+            'grupo'   => 'Profesor',
+        ],
+        'campos'         => [
+            'clave' => [
+                'etiqueta'  => 'Clave',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'nombres' => [
+                'etiqueta'  => 'Nombres',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'apellido_paterno' => [
+                'etiqueta'  => 'Apellido Paterno',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'apellido_materno' => [
+                'etiqueta'  => 'Apellido Materno',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'grado' => [
+                'etiqueta' => 'Grado',
+                'tipo'     => 'text',
+            ],
+            'correo' => [
+                'etiqueta'  => 'Correo',
+                'tipo'      => 'email',
+                'requerido' => true,
+            ],
+            'usuario' => [
+                'etiqueta'   => 'Usuario',
+                'tipo'       => 'text',
+                'requerido'  => true,
+                'patron'     => 'validarUsuarioGenerico',
+                'de_usuario' => true,
+            ],
+            'password_hash' => [
+                'etiqueta'   => 'Contraseña',
+                'tipo'       => 'password',
+                'requerido'  => true,
+                'hash'       => true,
+                'patron'     => 'validarPasswordGenerica',
+                'de_usuario' => true,
+            ],
+            'activo' => [
+                'etiqueta'   => 'Estado',
+                'tipo'       => 'select',
+                'requerido'  => true,
+                'opciones'   => ['1', '0'],
+                'etiquetas'  => ['1' => 'Activo', '0' => 'Inactivo'],
+                'defecto'    => '1',
+                'de_usuario' => true,
+            ],
         ],
     ],
 
