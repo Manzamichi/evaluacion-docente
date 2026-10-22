@@ -35,6 +35,7 @@ ON DUPLICATE KEY UPDATE orden = VALUES(orden);
 -- abrirse; si no, aparece en el menú pero responde 404.
 INSERT INTO modulos (nombre, descripcion, url, categoria, orden) VALUES
     ('Usuarios', 'Alta y baja de cuentas',        'usuario/admin',  'Seguridad', 10),
+    ('Profesores', 'Personal docente y su cuenta', 'profesor/admin', 'Seguridad', 15),
     ('Grupos',   'Roles y sus permisos',          'grupo/admin',    'Seguridad', 20),
     ('Módulos',  'Pantallas registradas',         'modulo/admin',   'Seguridad', 30),
     ('Categorías', 'Categorías del menú',         'categoria/admin','Seguridad', 35),
@@ -57,3 +58,10 @@ JOIN grupos g ON (u.usuario, g.nombre) IN (
     ('docente1', 'Profesor'),
     ('alumno1', 'Alumno')
 );
+
+-- docente1 es el profesor de prueba: su cuenta ya existe arriba.
+INSERT INTO profesores (clave, nombres, apellido_paterno, apellido_materno, grado, correo, usuario_id)
+SELECT 'P0001', 'Docente', 'de', 'Prueba', 'Mtro.', 'docente1@evaluaciondocente.local', id
+FROM usuarios
+WHERE usuario = 'docente1'
+ON DUPLICATE KEY UPDATE clave = clave;
