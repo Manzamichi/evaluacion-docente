@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nombre VARCHAR(150) NOT NULL,
     correo VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     editado_por VARCHAR(32) NULL DEFAULT NULL
 );
@@ -83,6 +84,23 @@ CREATE TABLE IF NOT EXISTS grupo_modulo (
     PRIMARY KEY (grupo_id, modulo_id),
     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE,
     FOREIGN KEY (modulo_id) REFERENCES modulos(id) ON DELETE CASCADE
+);
+
+-- Profesores. Cada profesor tiene exactamente un usuario (1:1); el usuario se
+-- crea desde la pantalla del profesor, no desde un módulo aparte. RESTRICT:
+-- no se borra un usuario que sigue ligado a un profesor.
+CREATE TABLE IF NOT EXISTS profesores (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    clave VARCHAR(10) NOT NULL UNIQUE,
+    nombres VARCHAR(100) NOT NULL,
+    apellido_paterno VARCHAR(50) NOT NULL,
+    apellido_materno VARCHAR(50) NOT NULL,
+    grado VARCHAR(20) NULL,
+    correo VARCHAR(100) NOT NULL,
+    usuario_id INT NOT NULL UNIQUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    editado_por VARCHAR(32) NULL DEFAULT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
 );
 
 -- Instrumentos de evaluación
