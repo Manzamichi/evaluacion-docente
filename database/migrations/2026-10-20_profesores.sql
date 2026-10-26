@@ -1,9 +1,7 @@
--- Migración: tabla `profesores` y `usuarios.activo`
+-- Migración: tabla `profesores`
 --
 -- profesores: cada profesor tiene exactamente un usuario (1:1, usuario_id
 --             UNIQUE). El usuario se crea desde la pantalla del profesor.
--- activo:     estado del acceso (1 activo, 0 inactivo). Los usuarios
---             existentes quedan activos.
 --
 -- Una instalación nueva no la necesita: database/schema.sql ya trae los cambios.
 --
@@ -13,9 +11,6 @@
 SET NAMES utf8mb4;
 
 USE evaluacion_docente;
-
-ALTER TABLE usuarios
-    ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1 AFTER password_hash;
 
 CREATE TABLE IF NOT EXISTS profesores (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
