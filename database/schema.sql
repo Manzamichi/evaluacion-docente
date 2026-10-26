@@ -25,13 +25,13 @@ USE evaluacion_docente;
 
 CREATE TABLE IF NOT EXISTS usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    usuario VARCHAR(32) NOT NULL UNIQUE,
-    nombre VARCHAR(150) NOT NULL,
+    usuario VARCHAR(50) NOT NULL UNIQUE,
     correo VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    activo TINYINT(1) NOT NULL DEFAULT 1,
+    -- 1 = activo, 0 = inactivo. Un usuario inactivo no puede iniciar sesión.
+    estado TINYINT(1) NOT NULL DEFAULT 1,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL
+    editado_por VARCHAR(50) NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS grupos (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS grupos (
     descripcion VARCHAR(255) NULL,
     es_admin TINYINT(1) NOT NULL DEFAULT 0,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL
+    editado_por VARCHAR(50) NULL DEFAULT NULL
 );
 
 -- Categorías del menú lateral. `orden` decide en qué posición sale cada
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS categorias (
     nombre VARCHAR(40) NOT NULL UNIQUE,
     orden INT NOT NULL DEFAULT 0,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL
+    editado_por VARCHAR(50) NULL DEFAULT NULL
 );
 
 -- modulos.categoria referencia el nombre y no el id a propósito: el menú y el
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS modulos (
     categoria VARCHAR(40) NOT NULL,
     orden INT NOT NULL DEFAULT 0,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL,
+    editado_por VARCHAR(50) NULL DEFAULT NULL,
     FOREIGN KEY (categoria) REFERENCES categorias(nombre)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
@@ -76,6 +76,15 @@ CREATE TABLE IF NOT EXISTS usuario_grupo (
     PRIMARY KEY (usuario_id, grupo_id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE
+);
+
+-- Un alumno es un usuario con matrícula: alumnos --1:1--> usuarios. Borrar el
+-- usuario borra al alumno (CASCADE); el módulo de alumnos borra al usuario.
+CREATE TABLE IF NOT EXISTS alumnos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    matricula VARCHAR(8) NOT NULL UNIQUE,
+    usuario_id INT NOT NULL UNIQUE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS grupo_modulo (
@@ -120,7 +129,7 @@ CREATE TABLE IF NOT EXISTS tipo_preguntas (
     -- NULL en los tipos que no esperan respuesta (instrucciones).
     respuesta VARCHAR(2048) NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL
+    editado_por VARCHAR(50) NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS instrumentos (
@@ -129,7 +138,7 @@ CREATE TABLE IF NOT EXISTS instrumentos (
     fecha_elaboracion DATE NOT NULL,
     instruccion TEXT NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL
+    editado_por VARCHAR(50) NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS dimensiones (
@@ -137,7 +146,7 @@ CREATE TABLE IF NOT EXISTS dimensiones (
     nombre VARCHAR(50) NOT NULL,
     comentarios VARCHAR(255) NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL
+    editado_por VARCHAR(50) NULL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS preguntas (
@@ -148,7 +157,7 @@ CREATE TABLE IF NOT EXISTS preguntas (
     dimension_id INT NOT NULL,
     orden INT NOT NULL DEFAULT 0,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL,
+    editado_por VARCHAR(50) NULL DEFAULT NULL,
     FOREIGN KEY (instrumento_id) REFERENCES instrumentos(id) ON DELETE RESTRICT,
     FOREIGN KEY (tipo_id) REFERENCES tipo_preguntas(id) ON DELETE RESTRICT,
     FOREIGN KEY (dimension_id) REFERENCES dimensiones(id) ON DELETE RESTRICT
