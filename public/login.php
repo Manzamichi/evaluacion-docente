@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = (string) ($_POST['password'] ?? '');
 
     if (!validarUsuarioGenerico($usuarioEnviado)) {
-        $errores[] = 'El usuario debe tener entre 3 y 32 caracteres (letras, números, "." o "_").';
+        $errores[] = 'El usuario debe tener entre 3 y 50 caracteres (letras, números, "." o "_").';
     }
 
     if (!validarPasswordGenerica($password)) {
@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     type="text"
                     name="usuario"
                     placeholder="alumno1"
-                    maxlength="32"
+                    maxlength="50"
                     autocomplete="username"
                     value="<?= htmlspecialchars($usuarioEnviado, ENT_QUOTES, 'UTF-8') ?>"
                     required
