@@ -43,7 +43,7 @@ $activo ??= '';
 
     <?php if (isset($_SESSION['usuario'])): ?>
         <p class="sesion">
-            <strong><?= e($_SESSION['usuario']['nombre']) ?></strong>
+            <strong><?= e($_SESSION['usuario']['usuario']) ?></strong>
             <?php $grupos = gruposActuales(); ?>
             <?php if ($grupos !== []): ?>
                 <span class="sesion-grupos">(<?= e(implode(', ', $grupos)) ?>)</span>
