@@ -56,6 +56,12 @@ return [
             ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
         ],
     ],
+        /* Un alumno vive en dos tablas (alumnos + su usuario), así que no es un
+     CRUD simple: el archivo crea, edita y borra ambos en una transaccion*/
+    'alumno/admin' => [
+        'archivo' => 'alumnos.php',
+        'volver'  => 'alumno/admin',
+    ],
 
     'grupo/admin' => [
         'crud'     => 'grupos',
@@ -153,7 +159,7 @@ return [
         'archivo' => 'asignar.php',
         'titulo'  => 'Grupos del usuario',
         'oculto'  => true,
-        'sujeto'  => ['tabla' => 'usuarios', 'muestra' => 'nombre'],
+        'sujeto'  => ['tabla' => 'usuarios', 'muestra' => 'usuario'],
         'pivote'  => ['tabla' => 'usuario_grupo', 'propia' => 'usuario_id', 'ajena' => 'grupo_id'],
         'destino' => [
             'tabla'    => 'grupos',
@@ -171,7 +177,7 @@ return [
         'pivote'  => ['tabla' => 'usuario_grupo', 'propia' => 'grupo_id', 'ajena' => 'usuario_id'],
         'destino' => [
             'tabla'    => 'usuarios',
-            'muestra'  => 'nombre',
+            'muestra'  => 'usuario',
             'etiqueta' => 'Usuarios',
         ],
         'volver' => 'grupo/admin',
