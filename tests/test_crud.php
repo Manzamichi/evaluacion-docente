@@ -36,39 +36,47 @@ lanza('identificador con backtick debe rechazarse', static fn () => ident('a`b')
 
 // Solo pasan las columnas declaradas: 'es_admin' se descarta
 $datos = saneaEntrada($cfg, [
-    'usuario'       => 'ana.lopez',
-    'nombre'        => '  Ana  ',
+    'usuario'       => '  ana.lopez  ',
     'correo'        => 'ana@test.mx',
     'password_hash' => 'secreta123',
+    'estado'        => '1',
     'es_admin'      => '1',
     'id'            => '999',
 ], true);
 
-assert(array_keys($datos) === ['usuario', 'nombre', 'correo', 'password_hash']);
-assert($datos['nombre'] === 'Ana');
+assert(array_keys($datos) === ['usuario', 'correo', 'password_hash', 'estado']);
+assert($datos['usuario'] === 'ana.lopez');
 assert($datos['password_hash'] !== 'secreta123');
 assert(password_verify('secreta123', $datos['password_hash']));
 
 // Campo requerido vacío
-lanza('nombre vacío debe rechazarse', static fn () => saneaEntrada($cfg, [
+lanza('correo vacío debe rechazarse', static fn () => saneaEntrada($cfg, [
     'usuario'       => 'ana.lopez',
-    'nombre'        => '',
+    'correo'        => '',
+    'password_hash' => 'secreta123',
+    'estado'        => '1',
+], true));
+
+// El estado solo es 1 (activo) o 0 (inactivo)
+lanza('estado fuera de opciones debe rechazarse', static fn () => saneaEntrada($cfg, [
+    'usuario'       => 'ana.lopez',
     'correo'        => 'ana@test.mx',
     'password_hash' => 'secreta123',
+    'estado'        => '2',
 ], true));
 
 // El CRUD aplica las mismas reglas de validation.php que usa el login
 lanza('usuario con espacios debe rechazarse', static fn () => saneaEntrada($cfg, [
     'usuario'       => 'ana lopez',
-    'nombre'        => 'Ana',
     'correo'        => 'ana@test.mx',
+    'estado'        => '1',
     'password_hash' => 'secreta123',
 ], true));
 
 lanza('contraseña corta debe rechazarse', static fn () => saneaEntrada($cfg, [
     'usuario'       => 'ana.lopez',
-    'nombre'        => 'Ana',
     'correo'        => 'ana@test.mx',
+    'estado'        => '1',
     'password_hash' => 'corta',
 ], true));
 
@@ -127,8 +135,8 @@ foreach ($malas as $caso => $respuesta) {
 // Al editar, contraseña vacía no toca la columna
 $edicion = saneaEntrada($cfg, [
     'usuario'       => 'ana.lopez',
-    'nombre'        => 'Ana',
     'correo'        => 'ana@test.mx',
+    'estado'        => '1',
     'password_hash' => '',
 ], false);
 
@@ -137,10 +145,16 @@ assert(!array_key_exists('password_hash', $edicion));
 // Al crear, la contraseña sí es obligatoria
 lanza('contraseña vacía al crear debe rechazarse', static fn () => saneaEntrada($cfg, [
     'usuario'       => 'ana.lopez',
-    'nombre'        => 'Ana',
     'correo'        => 'ana@test.mx',
+    'estado'        => '1',
     'password_hash' => '',
 ], true));
+
+// Matrícula de alumno: exactamente 8 dígitos
+assert(validarMatriculaAlumno('12345678'));
+foreach (['1234567', '123456789', 'a1234567', '1234 678', ''] as $mala) {
+    assert(!validarMatriculaAlumno($mala), $mala);
+}
 
 // Valor fuera de las opciones de un select
 $cfgModulos = tablaConfig('modulos');
@@ -190,18 +204,18 @@ assert(textoPlano('<p>Uno <strong>dos</strong>tres</p><ul><li>cuatro</li></ul><p
 // Solo pasan columnas que la tabla lista. 'password_hash' no está en 'listar',
 // así que no se puede filtrar por él aunque venga en la URL.
 $filtros = filtrosDesde($cfg, [
-    'nombre'        => 'ana',
+    'usuario'       => 'ana',
     'correo'        => 'ana@test.mx',
     'password_hash' => '$2y$',
     'inventada'     => 'x',
-    'nombre` OR 1=1 --' => 'x',
+    'usuario` OR 1=1 --' => 'x',
 ]);
 
-assert($filtros === ['nombre' => 'ana', 'correo' => 'ana@test.mx']);
+assert($filtros === ['usuario' => 'ana', 'correo' => 'ana@test.mx']);
 
 // Los valores se recortan y los vacíos no filtran nada
-assert(filtrosDesde($cfg, ['nombre' => '  ana  ']) === ['nombre' => 'ana']);
-assert(filtrosDesde($cfg, ['nombre' => '   ']) === []);
+assert(filtrosDesde($cfg, ['usuario' => '  ana  ']) === ['usuario' => 'ana']);
+assert(filtrosDesde($cfg, ['usuario' => '   ']) === []);
 assert(filtrosDesde($cfg, []) === []);
 
 // Sin filtros no hay WHERE
@@ -438,26 +452,26 @@ $datos   = saneaEntrada($cfgProf, [
     'correo'           => 'ana@x.mx',
     'usuario'          => 'ana.lopez',
     'password_hash'    => 'Secreta123!',
-    'activo'           => '1',
+    'estado'           => '1',
 ], true);
 
 $usuario = filaDeUsuario($cfgProf, $datos);
 
 // Los campos de usuario salen del registro y no llegan al INSERT de profesores
-assert(!isset($datos['usuario']) && !isset($datos['password_hash']) && !isset($datos['activo']));
-assert($usuario['usuario'] === 'ana.lopez' && $usuario['activo'] === '1');
+assert(!isset($datos['usuario']) && !isset($datos['password_hash']) && !isset($datos['estado']));
+assert($usuario['usuario'] === 'ana.lopez' && $usuario['estado'] === '1');
 assert(password_verify('Secreta123!', $usuario['password_hash']));
-// nombre y correo del usuario se copian del registro
-assert($usuario['nombre'] === 'Ana López Pérez' && $usuario['correo'] === 'ana@x.mx');
+// el correo del usuario se copia del registro
+assert(!isset($usuario['nombre']) && $usuario['correo'] === 'ana@x.mx');
 
 // Al editar, contraseña vacía = no cambiar: no viaja al UPDATE de usuarios
-$datos   = saneaEntrada($cfgProf, ['password_hash' => ''] + $datos + ['usuario' => 'ana.lopez', 'activo' => '0'], false);
+$datos   = saneaEntrada($cfgProf, ['password_hash' => ''] + $datos + ['usuario' => 'ana.lopez', 'estado' => '0'], false);
 $usuario = filaDeUsuario($cfgProf, $datos);
-assert(!array_key_exists('password_hash', $usuario) && $usuario['activo'] === '0');
+assert(!array_key_exists('password_hash', $usuario) && $usuario['estado'] === '0');
 
 lanza('estado fuera de 1/0 debe rechazarse', static fn () => saneaEntrada(
     $cfgProf,
-    ['activo' => '2'] + $datos + ['usuario' => 'ana.lopez'],
+    ['estado' => '2'] + $datos + ['usuario' => 'ana.lopez'],
     false
 ));
 

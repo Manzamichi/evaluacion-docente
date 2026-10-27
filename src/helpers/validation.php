@@ -9,7 +9,7 @@ function validarUsuarioGenerico(string $usuario): bool
     $usuario = trim($usuario);
     $longitud = strlen($usuario);
 
-    return $longitud >= 3 && $longitud <= 32 && preg_match('/^[A-Za-z0-9_.]+$/', $usuario) === 1;
+    return $longitud >= 3 && $longitud <= 50 && preg_match('/^[A-Za-z0-9_.]+$/', $usuario) === 1;
 }
 
 function validarPasswordGenerica(string $password): bool
@@ -17,6 +17,12 @@ function validarPasswordGenerica(string $password): bool
     $longitud = strlen($password);
 
     return $longitud >= 8 && $longitud <= 64;
+}
+
+// Matrícula de un alumno: exactamente 8 dígitos.
+function validarMatriculaAlumno(string $matricula): bool
+{
+    return preg_match('/^\d{8}$/', trim($matricula)) === 1;
 }
 
 /**

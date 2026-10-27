@@ -40,6 +40,16 @@ Para bajar los contenedores: `docker compose down` (agrega `-v` solo si quieres 
 >     evaluacion_docente < database/seed.sql
 > ```
 
+> **Alumnos (2026-10-21):** `usuarios` pierde `nombre`, gana `estado` (1 activo,
+> 0 inactivo: un inactivo no puede iniciar sesión) y se agrega la tabla
+> `alumnos`. En una base ya creada:
+> ```bash
+> docker exec -i evaluacion_docente_db mysql -uapp_user -papp_password \
+>     evaluacion_docente < database/migrations/2026-10-21_alumnos.sql
+> docker exec -i evaluacion_docente_db mysql -uapp_user -papp_password \
+>     evaluacion_docente < database/seed.sql
+> ```
+
 ## Instalación manual (sin Docker)
 
 Requiere PHP >= 8.5.0 y un MariaDB/MySQL propio instalado y corriendo.
@@ -315,6 +325,16 @@ casos se manda la lista completa de ids en su nuevo orden y
 lista no trae exactamente las preguntas del instrumento (alguien agregó o borró
 una mientras tanto) se rechaza y no cambia nada. Sirve igual para cualquier
 tabla con columna `orden`.
+
+### Ejemplo real: alumnos
+
+`alumno/admin` (`src/modules/alumnos.php`) se ve como un CRUD más porque usa
+los mismos componentes (`tabla`, `detalle`, `paginacion`, `formulario`), pero
+un alumno vive en dos tablas: `alumnos` (matrícula de 8 dígitos) y su fila en
+`usuarios`. El alta crea las dos en una transacción: usuario `a<matrícula>`,
+correo institucional (`construirCorreoInstitucional()`), el estado elegido y el
+grupo "Alumno". Editar cambia la matrícula y con ella el usuario y el correo;
+eliminar borra el usuario y el alumno cae por `ON DELETE CASCADE`.
 
 ## Componentes
 

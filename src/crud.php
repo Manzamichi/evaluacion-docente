@@ -641,7 +641,7 @@ function eliminar(PDO $pdo, string $tabla, int $id): void
 
 /**
  * Saca de $datos los campos 'de_usuario' y arma con ellos la fila de
- * `usuarios`, más nombre y correo copiados del propio registro. Así el
+ * `usuarios`, más el correo copiado del propio registro. Así el
  * registro y su usuario no se separan: se guardan siempre juntos.
  */
 function filaDeUsuario(array $cfg, array &$datos): array
@@ -656,9 +656,6 @@ function filaDeUsuario(array $cfg, array &$datos): array
         }
     }
 
-    $partes = array_map(static fn (string $col): string => (string) ($datos[$col] ?? ''), $propio['nombre']);
-
-    $fila['nombre'] = implode(' ', array_filter($partes, static fn (string $p): bool => $p !== ''));
     $fila['correo'] = $datos[$propio['correo']] ?? null;
 
     return $fila;

@@ -8,7 +8,7 @@ function autenticarLocal(string $usuario, string $password): array|false
 {
     $pdo = getDbConnection();
 
-    $stmt = $pdo->prepare('SELECT id, usuario, nombre, correo, password_hash FROM usuarios WHERE usuario = :usuario AND activo = 1');
+    $stmt = $pdo->prepare('SELECT id, usuario, correo, password_hash, estado FROM usuarios WHERE usuario = :usuario');
     $stmt->execute(['usuario' => trim($usuario)]);
     $fila = $stmt->fetch();
 
@@ -18,7 +18,12 @@ function autenticarLocal(string $usuario, string $password): array|false
         return false;
     }
 
-    unset($fila['password_hash']);
+    // Una cuenta inactiva recibe el mismo rechazo: no se revela que existe.
+    if ((int) $fila['estado'] !== 1) {
+        return false;
+    }
+
+    unset($fila['password_hash'], $fila['estado']);
 
     return $fila;
 }

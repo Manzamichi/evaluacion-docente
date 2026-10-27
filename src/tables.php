@@ -47,7 +47,6 @@ declare(strict_types=1);
  *   usuario_propio  El registro es dueño de un usuario (profesor, alumno): se
  *               crea, edita y elimina con él, en la misma transacción.
  *                 columna  FK a usuarios.id (p. ej. 'usuario_id')
- *                 nombre   Columnas que, unidas con espacio, son usuarios.nombre
  *                 correo   Columna que se copia a usuarios.correo
  *                 grupo    Grupo (grupos.nombre) que recibe el usuario al alta
  *               Los campos con 'de_usuario' => true se piden en el formulario
@@ -56,25 +55,20 @@ declare(strict_types=1);
  * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
  * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.
  *
- * Toda tabla que se declare aquí necesita la columna `editado_por VARCHAR(32)`:
+ * Toda tabla que se declare aquí necesita la columna `editado_por VARCHAR(50)`:
  * crear() y actualizar() la escriben siempre, y sin ella el INSERT falla.
  */
 return [
     'usuarios' => [
         'etiqueta'   => 'Usuarios',
         'por_pagina' => 10,
-        'listar'     => ['id', 'usuario', 'nombre', 'correo', 'creado_en'],
+        'listar'     => ['id', 'usuario', 'correo', 'estado', 'creado_en'],
         'campos'     => [
             'usuario' => [
                 'etiqueta'  => 'Usuario',
                 'tipo'      => 'text',
                 'requerido' => true,
                 'patron'    => 'validarUsuarioGenerico',
-            ],
-            'nombre' => [
-                'etiqueta'  => 'Nombre',
-                'tipo'      => 'text',
-                'requerido' => true,
             ],
             'correo' => [
                 'etiqueta'  => 'Correo',
@@ -88,6 +82,15 @@ return [
                 'hash'      => true,
                 'patron'    => 'validarPasswordGenerica',
             ],
+            // Un usuario inactivo no puede iniciar sesión (local_auth.php).
+            'estado' => [
+                'etiqueta'  => 'Estado',
+                'tipo'      => 'select',
+                'requerido' => true,
+                'opciones'  => ['1', '0'],
+                'etiquetas' => ['1' => 'Activo', '0' => 'Inactivo'],
+                'defecto'   => '1',
+            ],
         ],
         'acciones' => [
             ['etiqueta' => 'Grupos', 'modulo' => 'usuario/grupos'],
@@ -100,7 +103,6 @@ return [
         // usuario_id no se edita: el usuario nace y muere con el profesor.
         'usuario_propio' => [
             'columna' => 'usuario_id',
-            'nombre'  => ['nombres', 'apellido_paterno', 'apellido_materno'],
             'correo'  => 'correo',
             'grupo'   => 'Profesor',
         ],
@@ -149,7 +151,7 @@ return [
                 'patron'     => 'validarPasswordGenerica',
                 'de_usuario' => true,
             ],
-            'activo' => [
+            'estado' => [
                 'etiqueta'   => 'Estado',
                 'tipo'       => 'select',
                 'requerido'  => true,
