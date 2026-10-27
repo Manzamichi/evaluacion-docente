@@ -218,8 +218,9 @@ ese módulo es el que está abierto. Se declaran en `src/modules.php`:
 'grupo/admin' => [
     'crud'     => 'grupos',
     'acciones' => [
-        ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
-        ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+        ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+        ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+        ['etiqueta' => 'Importar',     'params' => ['accion' => 'importar']],
     ],
 ],
 ```
@@ -239,7 +240,7 @@ destino, según con qué se llegue:
 | Panel de detalle de una fila | El enlace ya lleva el `?id=`: abre directo |
 | Menú lateral | Sin `?id=`: primero el componente `selector`, luego la pantalla |
 
-## Exportar e importar CSV
+## Exportar e importar
 
 `exportar` e `importar` las atiende el CRUD genérico, pero **solo donde el módulo
 las declaró**: escribir `&accion=importar` a mano en un módulo que no la lista
@@ -247,19 +248,46 @@ responde 404. No necesitan una fila propia en la tabla `modulos` ni un permiso
 aparte — cuelgan de la url del módulo, que ya está permisada, y ninguna de las
 dos deja hacer nada que el listado no dejara ya.
 
+```php
+'acciones' => [
+    ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+    ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+    ['etiqueta' => 'Importar',     'params' => ['accion' => 'importar']],
+],
+```
+
 **Exportar** baja lo que se está viendo: respeta la búsqueda activa y saca las
 mismas columnas que el panel de detalle, así que una columna con `hash` o en
-`ocultar` tampoco sale en el archivo. Lleva BOM para que Excel no rompa los
-acentos.
+`ocultar` tampoco sale en el archivo. `formato=txt` lo separa con `|` (el
+formato que se importa); cualquier otro valor, CSV con comas para Excel. Los dos
+llevan BOM para que Excel no rompa los acentos.
 
-**Importar** da de alta en bloque. La primera línea del archivo son los nombres
-de las columnas; las que no estén en `campos` se ignoran. Cada fila pasa por la
-misma validación que el formulario, y la carga es **todo o nada**: si una fila
-falla se deshace la importación completa y se reporta el número de línea. Tope
-de 2 MB y 5000 filas.
+**Importar** acepta un `.txt` separado por `|` (los archivos del sistema escolar,
+como `ProfesoresConAlumnosInscritos.txt`) o un `.csv` separado por comas; el
+separador se elige por la extensión. La primera línea es el encabezado; las
+columnas que no estén en `campos` se ignoran. Un archivo que no es UTF-8 se lee
+como Windows-1252. Cada fila pasa por la misma validación que el formulario, y la
+carga es **todo o nada**: si una fila falla se deshace la importación completa y
+se reporta el número de línea. Tope de 2 MB y 5000 filas.
 
-Una tabla cuyo alta exija contraseña (`hash` + `requerido`, como `usuarios`) no
-debería declarar `importar`: pediría las contraseñas en claro dentro del CSV.
+Con la clave `importar` de `tables.php`:
+
+- `encabezados`: alias del archivo a columna (`'ClaveProfesor' => 'clave'`). El
+  archivo puede traer el alias o el nombre de la columna, y exportar sale con el
+  alias, así que lo exportado se vuelve a importar tal cual.
+- `llave`: columna única. Una fila cuya llave ya existe **actualiza** ese
+  registro (lo que el archivo no trae se queda como estaba); las demás se dan de
+  alta. Así el mismo archivo se sube cada periodo sin chocar.
+
+Una tabla con `usuario_propio` (profesores) crea la cuenta de cada alta sola: el
+usuario es lo que va antes de la `@` del correo y la contraseña es la variable de
+entorno `PASSWORD_GENERICA` (en `.env`, nunca en el repo; sin ella la importación
+se rechaza). Al actualizar, el usuario sigue al correo y la contraseña y el estado
+no se tocan. Mientras el login sea local, esa contraseña abre todas esas cuentas:
+el login por Directorio Activo debe estar activo antes de producción.
+
+`usuarios` no declara `importar`: pediría las contraseñas en claro dentro del
+archivo.
 
 ## Agregar un módulo que no sea un CRUD
 
@@ -367,7 +395,7 @@ variable que "ya andaba por ahí".
 | `formulario` | Alta y edición; delega cada campo a `campo` |
 | `campo` | Un input, según el `tipo` de `tables.php` |
 | `asignador` | Una relación N:N como lista de casillas |
-| `importador` | Subida de un CSV y los errores que devolvió |
+| `importador` | Subida de un .txt o .csv y los errores que devolvió |
 | `selector` | Lista para elegir sobre qué registro se trabaja |
 
 ### Reglas que no se rompen
