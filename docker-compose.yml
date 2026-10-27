@@ -17,6 +17,8 @@ services:
       DB_USER: app_user
       DB_PASS: app_password
       DB_PORT: 3306
+      # Contraseña de las cuentas creadas al importar. Se define en .env, no aquí.
+      PASSWORD_GENERICA: ${PASSWORD_GENERICA:-}
     depends_on:
       db:
         condition: service_healthy
