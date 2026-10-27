@@ -50,7 +50,14 @@ declare(strict_types=1);
  *                 correo   Columna que se copia a usuarios.correo
  *                 grupo    Grupo (grupos.nombre) que recibe el usuario al alta
  *               Los campos con 'de_usuario' => true se piden en el formulario
- *               pero se guardan en `usuarios`, no en esta tabla.
+ *               pero se guardan en `usuarios`, no en esta tabla. Al importar,
+ *               el usuario sale del correo (lo que va antes de la @) y la
+ *               contraseña de la variable de entorno PASSWORD_GENERICA.
+ *   importar    Cómo leer el archivo que se importa (opcional):
+ *                 llave        Columna única: una fila cuya llave ya existe
+ *                              actualiza ese registro en vez de crear otro
+ *                 encabezados  Alias del archivo => columna, para archivos que
+ *                              vienen de otro sistema ('ClaveProfesor' => 'clave')
  *
  * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
  * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.
@@ -105,6 +112,18 @@ return [
             'columna' => 'usuario_id',
             'correo'  => 'correo',
             'grupo'   => 'Profesor',
+        ],
+        // ProfesoresConAlumnosInscritos.txt, el archivo del sistema escolar.
+        'importar' => [
+            'llave'       => 'clave',
+            'encabezados' => [
+                'ClaveProfesor'   => 'clave',
+                'NombreProfesor'  => 'nombres',
+                'ApellidoPaterno' => 'apellido_paterno',
+                'ApellidoMaterno' => 'apellido_materno',
+                'GradoAcademico'  => 'grado',
+                'Correo'          => 'correo',
+            ],
         ],
         'campos'         => [
             'clave' => [

@@ -20,7 +20,7 @@ declare(strict_types=1);
  * Con 'acciones' se cuelgan del módulo, en el menú lateral, las acciones que no
  * dependen de ningún registro. Cada una apunta a uno de dos lados:
  *
- *   ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']]
+ *   ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']]
  *   ['etiqueta' => 'Reporte',      'modulo' => 'reporte/general']
  *
  * Con 'params' el enlace va al mismo módulo con esos parámetros; con 'modulo' va
@@ -36,11 +36,12 @@ declare(strict_types=1);
 return [
     'usuario/admin' => [
         'crud' => 'usuarios',
-        // Sin 'Importar CSV': la contraseña es obligatoria en cada alta nueva,
+        // Sin 'Importar': la contraseña es obligatoria en cada alta nueva,
         // así que una carga masiva pediría una columna de contraseñas en claro
         // dentro del archivo. Eso se resuelve aparte, no con esta acción.
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
             // Sin ?id=: la pantalla pregunta de qué usuario antes de abrir el
             // dual box. El atajo con el usuario ya elegido está en el panel de
             // detalle, que es de dónde se llega con una fila en la mano.
@@ -48,12 +49,14 @@ return [
         ],
     ],
 
-    // Sin 'Importar CSV': cada profesor necesita su usuario y contraseña, igual
-    // que en usuario/admin.
+    // Importar acepta el .txt del sistema escolar: el usuario sale del correo y
+    // la contraseña es la genérica (ver 'usuario_propio' en tables.php).
     'profesor/admin' => [
         'crud'     => 'profesores',
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
         ],
     ],
         /* Un alumno vive en dos tablas (alumnos + su usuario), así que no es un
@@ -66,8 +69,9 @@ return [
     'grupo/admin' => [
         'crud'     => 'grupos',
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
-            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
             ['etiqueta' => 'Permisos de un grupo', 'modulo' => 'grupo/permisos'],
             ['etiqueta' => 'Usuarios de un grupo', 'modulo' => 'grupo/usuarios'],
         ],
@@ -76,8 +80,9 @@ return [
     'modulo/admin' => [
         'crud'     => 'modulos',
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
-            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
             // Listar, crear y editar categorías: todo está en ese CRUD.
             ['etiqueta' => 'Categorías', 'modulo' => 'categoria/admin'],
         ],
@@ -95,8 +100,9 @@ return [
     'instrumento/admin' => [
         'crud'     => 'instrumentos',
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
-            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
             ['etiqueta' => 'Preguntas de un instrumento', 'modulo' => 'instrumento/preguntas'],
         ],
     ],
@@ -113,24 +119,27 @@ return [
     'pregunta/admin' => [
         'crud'     => 'preguntas',
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
-            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
         ],
     ],
 
     'dimension/admin' => [
         'crud'     => 'dimensiones',
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
-            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
         ],
     ],
 
     'tipo_pregunta/admin' => [
         'crud'     => 'tipo_preguntas',
         'acciones' => [
-            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar']],
-            ['etiqueta' => 'Importar CSV', 'params' => ['accion' => 'importar']],
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
         ],
     ],
 

@@ -374,13 +374,14 @@ assert(pivoteIds([]) === []);
 // Las que apuntan al mismo módulo con 'params' no consultan permisos, así que
 // se pueden comprobar sin base de datos ni sesión.
 $acciones = accionesDeModulo('grupo/admin');
-assert($acciones[0] === ['etiqueta' => 'Exportar CSV', 'href' => '?m=grupo/admin&accion=exportar']);
-assert($acciones[1]['href'] === '?m=grupo/admin&accion=importar');
+assert($acciones[0] === ['etiqueta' => 'Exportar CSV', 'href' => '?m=grupo/admin&accion=exportar&formato=csv']);
+assert($acciones[1]['href'] === '?m=grupo/admin&accion=exportar&formato=txt');
+assert($acciones[2]['href'] === '?m=grupo/admin&accion=importar');
 
 // Solo salen las de 'params': las que apuntan a otro módulo pasan por puede(),
 // y sin sesión no hay permiso que valga. Que se pinten o no es cosa de quien
 // mire el menú, no de la declaración.
-assert(count($acciones) === 2);
+assert(count($acciones) === 3);
 
 // Las de otro módulo entran sin ?id= a propósito: la pantalla pregunta primero
 // sobre qué registro se trabaja. El atajo con el id ya puesto vive en el panel
@@ -438,6 +439,18 @@ lanza('encabezado sin columnas conocidas debe rechazarse',
 file_put_contents($ruta, '');
 lanza('archivo vacío debe rechazarse', static fn () => leerCsv($ruta, ['nombre']));
 
+// .txt con pipes y encabezados del sistema escolar; una coma dentro de un campo es texto
+file_put_contents($ruta, "ClaveProfesor|NombreProfesor|Correo|Extra\n"
+    . "P01|Ana, María|ana@uady.mx|x\n");
+
+$filas = leerCsv($ruta, ['clave', 'nombres', 'correo'], '|', ['ClaveProfesor' => 'clave', 'NombreProfesor' => 'nombres', 'Correo' => 'correo']);
+assert($filas[0]['datos'] === ['clave' => 'P01', 'nombres' => 'Ana, María', 'correo' => 'ana@uady.mx'],
+    'los alias deben mapear a columnas y la coma no debe partir el campo');
+
+// Un archivo guardado en Windows-1252 llega a UTF-8 con sus acentos
+file_put_contents($ruta, "nombre\n" . mb_convert_encoding('Pérez Núñez', 'Windows-1252', 'UTF-8') . "\n");
+assert(leerCsv($ruta, ['nombre'], '|')[0]['datos']['nombre'] === 'Pérez Núñez');
+
 unlink($ruta);
 
 // --- Profesores: el usuario se guarda aparte ---
@@ -474,5 +487,18 @@ lanza('estado fuera de 1/0 debe rechazarse', static fn () => saneaEntrada(
     ['estado' => '2'] + $datos + ['usuario' => 'ana.lopez'],
     false
 ));
+
+// Importar: el usuario sale del correo, sin importar el dominio
+putenv('PASSWORD_GENERICA=Generica123!');
+$fila = completaUsuario($cfgProf, ['clave' => 'P1', 'correo' => 'ana.lopez@profesor.mx'], true);
+assert($fila['usuario'] === 'ana.lopez' && $fila['password_hash'] === 'Generica123!' && $fila['estado'] === '1');
+
+// Al actualizar no se ponen contraseña ni estado: se quedan los que tiene
+$fila = completaUsuario($cfgProf, ['correo' => 'ana@uady.mx'], false);
+assert($fila === ['correo' => 'ana@uady.mx', 'usuario' => 'ana']);
+
+putenv('PASSWORD_GENERICA');
+lanza('sin PASSWORD_GENERICA un alta importada debe rechazarse',
+    static fn () => completaUsuario($cfgProf, ['correo' => 'a@b.mx'], true));
 
 echo "OK: todas las comprobaciones pasaron.\n";

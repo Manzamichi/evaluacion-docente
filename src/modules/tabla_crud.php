@@ -54,20 +54,35 @@ if ($accion === 'exportar') {
 
     $stmt = exportarFilas($pdo, $tabla, $filtros);
 
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $tabla . '-' . date('Y-m-d') . '.csv"');
+    // .txt separado por pipes es el formato que se importa; CSV, el que abre Excel.
+    $txt = ($_GET['formato'] ?? '') === 'txt';
+
+    [$separador, $extension, $tipo] = $txt
+        ? ['|', 'txt', 'text/plain']
+        : [',', 'csv', 'text/csv'];
+
+    header('Content-Type: ' . $tipo . '; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $tabla . '-' . date('Y-m-d') . '.' . $extension . '"');
 
     $salida = fopen('php://output', 'w');
 
     // BOM UTF-8: sin él, Excel abre el archivo en la codificación del sistema y
-    // los acentos salen rotos.
+    // los acentos salen rotos. Al importar se quita solo.
     fwrite($salida, "\xEF\xBB\xBF");
+
+    // Con alias declarados, el encabezado sale con ellos: lo exportado se puede
+    // volver a importar tal cual.
+    $alias = array_flip($cfg['importar']['encabezados'] ?? []);
+
     // El escape vacío es el valor que PHP tomará por defecto, y el que hace que
     // una celda con "\\" salga tal cual en vez de escaparse.
-    fputcsv($salida, columnasDetalle($pdo, $tabla, $cfg), ',', '"', '');
+    fputcsv($salida, array_map(
+        static fn (string $col): string => $alias[$col] ?? $col,
+        columnasDetalle($pdo, $tabla, $cfg)
+    ), $separador, '"', '');
 
     while (($fila = $stmt->fetch(PDO::FETCH_NUM)) !== false) {
-        fputcsv($salida, $fila, ',', '"', '');
+        fputcsv($salida, $fila, $separador, '"', '');
     }
 
     fclose($salida);
