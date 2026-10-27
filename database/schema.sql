@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS profesores (
     correo VARCHAR(100) NOT NULL,
     usuario_id INT NOT NULL UNIQUE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    editado_por VARCHAR(32) NULL DEFAULT NULL,
+    editado_por VARCHAR(50) NULL DEFAULT NULL,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
 );
 
