@@ -233,35 +233,50 @@ function exportarFilas(PDO $pdo, string $tabla, array $filtros = []): PDOStateme
 const MAX_FILAS_CSV = 5000;
 
 /**
- * Lee un CSV y devuelve sus filas indexadas por columna.
+ * Lee un archivo delimitado (CSV con coma, .txt con pipe) y devuelve sus filas
+ * indexadas por columna.
  *
- * La primera línea es el encabezado y decide qué columna es cada una. Las que no
- * estén en $columnas se ignoran (es la whitelist, igual que 'campos' para el
- * formulario), y las líneas en blanco se saltan: un archivo de Excel casi
- * siempre trae una al final.
+ * La primera línea es el encabezado y decide qué columna es cada una. Cada
+ * nombre puede ser la columna tal cual o un alias de $encabezados
+ * ('ClaveProfesor' => 'clave'). Las que no estén en $columnas se ignoran (es la
+ * whitelist, igual que 'campos' para el formulario), y las líneas en blanco se
+ * saltan: un archivo de Excel casi siempre trae una al final.
+ *
+ * Un archivo que no es UTF-8 válido se lee como Windows-1252, que es como lo
+ * guardan Excel y los sistemas escolares en Windows: sin esto, cada acento
+ * llegaría a la base como un byte suelto.
  *
  * Solo texto: ni base de datos ni validación. Lo que salga de aquí todavía tiene
  * que pasar por saneaEntrada().
  *
- * @param  string[] $columnas Columnas aceptadas
+ * @param  string[]              $columnas    Columnas aceptadas
+ * @param  array<string, string> $encabezados Alias del archivo => columna
  * @return array<int, array{linea: int, datos: array<string, string>}>
  * @throws InvalidArgumentException si el archivo no se puede leer, no trae
  *                                  encabezado o excede MAX_FILAS_CSV
  */
-function leerCsv(string $ruta, array $columnas): array
+function leerCsv(string $ruta, array $columnas, string $separador = ',', array $encabezados = []): array
 {
-    $manejador = @fopen($ruta, 'r');
+    $contenido = @file_get_contents($ruta);
 
-    if ($manejador === false) {
+    if ($contenido === false) {
         throw new InvalidArgumentException('No se pudo leer el archivo.');
     }
+
+    if (!mb_check_encoding($contenido, 'UTF-8')) {
+        $contenido = mb_convert_encoding($contenido, 'UTF-8', 'Windows-1252');
+    }
+
+    $manejador = fopen('php://temp', 'r+');
+    fwrite($manejador, $contenido);
+    rewind($manejador);
 
     try {
         // El escape se pasa vacío a propósito: es el valor que PHP tomará por
         // defecto y además el correcto. La barra invertida como escape es una
         // invención de PHP que no está en el formato CSV, y con ella una ruta
         // de Windows o un LIKE con "\\" dentro de una celda se leen mal.
-        $encabezado = fgetcsv($manejador, null, ',', '"', '');
+        $encabezado = fgetcsv($manejador, null, $separador, '"', '');
 
         if ($encabezado === false || $encabezado === [null]) {
             throw new InvalidArgumentException('El archivo está vacío.');
@@ -275,6 +290,7 @@ function leerCsv(string $ruta, array $columnas): array
 
         foreach ($encabezado as $posicion => $nombre) {
             $nombre = trim((string) $nombre);
+            $nombre = $encabezados[$nombre] ?? $nombre;
 
             if (in_array($nombre, $columnas, true)) {
                 $mapa[$posicion] = $nombre;
@@ -290,7 +306,7 @@ function leerCsv(string $ruta, array $columnas): array
         $filas = [];
         $linea = 1;
 
-        while (($fila = fgetcsv($manejador, null, ',', '"', '')) !== false) {
+        while (($fila = fgetcsv($manejador, null, $separador, '"', '')) !== false) {
             $linea++;
 
             // fgetcsv devuelve [null] en una línea vacía.
@@ -325,7 +341,12 @@ function leerCsv(string $ruta, array $columnas): array
 const MAX_BYTES_CSV = 2 * 1024 * 1024;
 
 /**
- * Da de alta en bloque los registros de un CSV subido.
+ * Da de alta en bloque los registros de un archivo subido: .txt separado por
+ * pipes (el formato de los sistemas escolares) o .csv separado por comas.
+ *
+ * Con 'importar' => ['llave' => 'clave'] en tables.php, una fila cuya llave ya
+ * existe actualiza ese registro en vez de chocar: el mismo archivo se puede
+ * volver a subir cada periodo. Lo que el archivo no trae se queda como estaba.
  *
  * Todo o nada: las altas van dentro de una transacción y basta que una fila no
  * pase la validación para deshacer la carga entera. Una importación a medias es
@@ -361,8 +382,12 @@ function importarCsv(PDO $pdo, string $tabla, array $cfg, array $archivo): array
         return ['El archivo pasa de ' . (int) (MAX_BYTES_CSV / 1024 / 1024) . ' MB. Divídelo en varias partes.'];
     }
 
+    $importar  = $cfg['importar'] ?? [];
+    $llave     = $importar['llave'] ?? null;
+    $separador = strtolower(pathinfo((string) ($archivo['name'] ?? ''), PATHINFO_EXTENSION)) === 'txt' ? '|' : ',';
+
     try {
-        $filas = leerCsv($ruta, array_keys($cfg['campos']));
+        $filas = leerCsv($ruta, array_keys($cfg['campos']), $separador, $importar['encabezados'] ?? []);
     } catch (InvalidArgumentException $e) {
         return [$e->getMessage()];
     }
@@ -375,7 +400,16 @@ function importarCsv(PDO $pdo, string $tabla, array $cfg, array $archivo): array
 
     try {
         foreach ($filas as $fila) {
-            crear($pdo, $tabla, saneaEntrada($cfg, $fila['datos'], true));
+            $id      = $llave !== null ? idPorLlave($pdo, $tabla, $llave, $fila['datos'][$llave] ?? '') : 0;
+            $entrada = isset($cfg['usuario_propio'])
+                ? completaUsuario($cfg, $fila['datos'], $id === 0)
+                : $fila['datos'];
+
+            if ($id === 0) {
+                crear($pdo, $tabla, saneaEntrada($cfg, $entrada, true));
+            } else {
+                actualizar($pdo, $tabla, $id, saneaEntrada($cfg, $entrada + obtener($pdo, $tabla, $id), false));
+            }
         }
 
         $pdo->commit();
@@ -390,6 +424,56 @@ function importarCsv(PDO $pdo, string $tabla, array $cfg, array $archivo): array
 
         return ["Línea {$fila['linea']}: la base de datos rechazó el registro. Revisa que no haya valores duplicados."];
     }
+}
+
+/** id del registro cuya columna $llave vale $valor; 0 si no hay. */
+function idPorLlave(PDO $pdo, string $tabla, string $llave, string $valor): int
+{
+    $stmt = $pdo->prepare('SELECT id FROM ' . ident($tabla) . ' WHERE ' . ident($llave) . ' = ? LIMIT 1');
+    $stmt->execute([trim($valor)]);
+
+    return (int) $stmt->fetchColumn();
+}
+
+/**
+ * Completa los campos de usuario que un archivo de importación no trae. El
+ * usuario es lo que va antes de la @ del correo, sea cual sea el dominio. En un
+ * alta, además, la contraseña genérica y el estado por defecto; al actualizar
+ * no se tocan.
+ *
+ * La contraseña genérica no se usa para entrar de verdad (el login es contra
+ * Directorio Activo), pero la columna es obligatoria. Sale del entorno, nunca
+ * del repo.
+ */
+function completaUsuario(array $cfg, array $entrada, bool $esNuevo): array
+{
+    $correo = trim((string) ($entrada[$cfg['usuario_propio']['correo']] ?? ''));
+
+    if (trim((string) ($entrada['usuario'] ?? '')) === '' && str_contains($correo, '@')) {
+        $entrada['usuario'] = strstr($correo, '@', true);
+    }
+
+    if (!$esNuevo) {
+        return $entrada;
+    }
+
+    if (($entrada['password_hash'] ?? '') === '') {
+        $generica = (string) getenv('PASSWORD_GENERICA');
+
+        if ($generica === '') {
+            throw new InvalidArgumentException('Falta configurar PASSWORD_GENERICA en el servidor.');
+        }
+
+        $entrada['password_hash'] = $generica;
+    }
+
+    foreach ($cfg['campos'] as $col => $campo) {
+        if (!empty($campo['de_usuario']) && isset($campo['defecto']) && ($entrada[$col] ?? '') === '') {
+            $entrada[$col] = (string) $campo['defecto'];
+        }
+    }
+
+    return $entrada;
 }
 
 /**
@@ -701,6 +785,13 @@ function actualizarFila(PDO $pdo, string $tabla, int $id, array $datos): void
 
 function enTransaccion(PDO $pdo, callable $fn): void
 {
+    // Dentro de una importación ya hay una transacción abierta: la de afuera
+    // decide el commit, y un fallo aquí la deshace entera.
+    if ($pdo->inTransaction()) {
+        $fn();
+        return;
+    }
+
     $pdo->beginTransaction();
 
     try {
