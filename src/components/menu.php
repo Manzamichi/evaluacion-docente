@@ -34,7 +34,7 @@ declare(strict_types=1);
                     <a href="<?= $enlace ?>" class="<?= $clase ?>"><?= e($modulo['nombre']) ?></a>
                 <?php else: ?>
                     <details class="lateral-modulo"<?= $esActivo ? ' open' : '' ?>>
-                        <summary>
+                        <summary class="<?= $clase ?>">
                             <a href="<?= $enlace ?>" class="<?= $clase ?>"><?= e($modulo['nombre']) ?></a>
                         </summary>
                         <div class="lateral-acciones">

@@ -36,6 +36,10 @@ declare(strict_types=1);
 return [
     'usuario/admin' => [
         'crud' => 'usuarios',
+        // Oculto del menú lateral (menuActual() salta los módulos 'oculto'). El
+        // módulo sigue existiendo y es accesible por url (?m=usuario/admin) para
+        // quien tenga el permiso. Para volver a mostrarlo, borrar la línea de abajo.
+        'oculto' => true,
         // Sin 'Importar': la contraseña es obligatoria en cada alta nueva,
         // así que una carga masiva pediría una columna de contraseñas en claro
         // dentro del archivo. Eso se resuelve aparte, no con esta acción.

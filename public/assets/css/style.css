@@ -119,6 +119,22 @@ body {
     font-weight: 600;
 }
 
+/* Módulo con acciones: el <summary> también se resalta, para que la franja
+   dorada llegue hasta la flecha y no se vea cortada. */
+.lateral summary.activo {
+    background: var(--dorado-tenue);
+    box-shadow: inset 3px 0 0 var(--dorado);
+}
+
+.lateral summary.activo::after {
+    border-top-color: var(--dorado-oscuro);
+}
+
+.lateral-modulo[open] summary.activo::after {
+    border-top-color: transparent;
+    border-bottom-color: var(--dorado-oscuro);
+}
+
 /* Acciones del módulo: las que no dependen de ningún registro cuelgan de él en
    un <details>, que despliega sin una línea de JavaScript. El <a> vive dentro
    del <summary>, así que hacer clic en el nombre navega y en el resto despliega. */
