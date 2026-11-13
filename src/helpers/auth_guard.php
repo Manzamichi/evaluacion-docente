@@ -5,9 +5,28 @@ declare(strict_types=1);
 require_once __DIR__ . '/modulos.php';
 require_once __DIR__ . '/../components/_render.php';
 
+/*
+ * Segundos de inactividad tras los cuales se cierra la sesión (60 minutos/1 hora).
+ * Para cambiarlo, editar solo esta constante: p. ej. 30 * 60 son 30 minutos.
+ * El contador se reinicia con cada petición; es inactividad, no una duración
+ * máxima de la sesión.
+ */
+const SESION_INACTIVIDAD = 3600; 
+
+/*
+ * Segundos máximos de duración de una sesión (16 horas), cuente o no con
+ * actividad. Pasado ese tiempo se pide iniciar sesión de nuevo. Para cambiarlo,
+ * editar solo esta constante: p. ej. 4 * 3600 son 4 horas. Debe ser
+ * mayor que SESION_INACTIVIDAD; si no, el límite de inactividad nunca se alcanza.
+ */
+const SESION_DURACION_MAXIMA = 16 * 3600;
+
 function requerirSesion(): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
+        // Sin esto PHP puede borrar el archivo de sesión (24 min por defecto)
+        // antes de que venza el límite si se sube SESION_INACTIVIDAD.
+        ini_set('session.gc_maxlifetime', (string) max(SESION_INACTIVIDAD, SESION_DURACION_MAXIMA, 1440));
         session_start();
     }
 
@@ -15,6 +34,22 @@ function requerirSesion(): void
         header('Location: login.php');
         exit;
     }
+
+    $ahora  = time();
+    $ultima = (int) ($_SESSION['ultima_actividad'] ?? 0);
+    // Una sesión abierta antes de este control no trae inicio: cuenta desde ahora.
+    $inicio = (int) ($_SESSION['inicio_sesion'] ??= $ahora);
+
+    if (
+        ($ultima > 0 && $ahora - $ultima > SESION_INACTIVIDAD)
+        || $ahora - $inicio > SESION_DURACION_MAXIMA
+    ) {
+        session_destroy();
+        header('Location: login.php?expirada=1');
+        exit;
+    }
+
+    $_SESSION['ultima_actividad'] = $ahora;
 }
 
 /**

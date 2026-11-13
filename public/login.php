@@ -19,6 +19,10 @@ if (isset($_SESSION['usuario'])) {
 $errores = [];
 $usuarioEnviado = '';
 
+if (isset($_GET['expirada'])) {
+    $errores[] = 'Tu sesión expiró por inactividad o por tiempo. Inicia sesión de nuevo.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuarioEnviado = trim((string) ($_POST['usuario'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
@@ -38,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errores[] = 'Usuario o contraseña incorrectos.';
         } else {
             $_SESSION['usuario'] = $usuario;
+            $_SESSION['inicio_sesion'] = time();
             header('Location: index.php');
             exit;
         }
