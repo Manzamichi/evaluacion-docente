@@ -629,7 +629,7 @@ function crear(PDO $pdo, string $tabla, array $datos): void
 
     // Se pone aquí y no en saneaEntrada() para que ningún alta pueda saltárselo:
     // la carga masiva de CSV también pasa por esta función.
-    $datos['editado_por'] = usuarioActual();
+    $datos['creado_por'] = $datos['editado_por'] = usuarioActual();
 
     // 'al_final_de': un alta sin orden va al final de su grupo (la pregunta
     // nueva, al final de su instrumento). Un CSV que sí trae orden lo respeta.
@@ -653,7 +653,10 @@ function crear(PDO $pdo, string $tabla, array $datos): void
 
     // Registro y usuario se crean juntos o no se crea ninguno.
     enTransaccion($pdo, static function () use ($pdo, $tabla, $datos, $usuario, $propio): void {
-        insertarFila($pdo, 'usuarios', $usuario + ['editado_por' => $datos['editado_por']]);
+        insertarFila($pdo, 'usuarios', $usuario + [
+            'creado_por'  => $datos['creado_por'],
+            'editado_por' => $datos['editado_por'],
+        ]);
         $usuarioId = (int) $pdo->lastInsertId();
 
         if (isset($propio['grupo'])) {
@@ -741,6 +744,10 @@ function filaDeUsuario(array $cfg, array &$datos): array
     }
 
     $fila['correo'] = $datos[$propio['correo']] ?? null;
+
+    if (isset($propio['tipo'])) {
+        $fila['tipo'] = $propio['tipo'];
+    }
 
     return $fila;
 }
