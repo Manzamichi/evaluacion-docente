@@ -49,6 +49,7 @@ declare(strict_types=1);
  *                 columna  FK a usuarios.id (p. ej. 'usuario_id')
  *                 correo   Columna que se copia a usuarios.correo
  *                 grupo    Grupo (grupos.nombre) que recibe el usuario al alta
+ *                 tipo     usuarios.tipo (1 = profesor, 2 = alumno)
  *               Los campos con 'de_usuario' => true se piden en el formulario
  *               pero se guardan en `usuarios`, no en esta tabla. Al importar,
  *               el usuario sale del correo (lo que va antes de la @) y la
@@ -62,8 +63,10 @@ declare(strict_types=1);
  * Las columnas que la base de datos llena sola (id, TIMESTAMP con DEFAULT) y
  * las que no deben tocarse desde la interfaz van en 'listar' pero no en 'campos'.
  *
- * Toda tabla que se declare aquí necesita la columna `editado_por VARCHAR(50)`:
- * crear() y actualizar() la escriben siempre, y sin ella el INSERT falla.
+ * Toda tabla que se declare aquí necesita las columnas de auditoría
+ * (creado_en, creado_por, editado_en, editado_por; ver database/schema.sql):
+ * crear() escribe creado_por y editado_por, actualizar() editado_por, y sin
+ * ellas el INSERT falla.
  */
 return [
     'usuarios' => [
@@ -112,6 +115,7 @@ return [
             'columna' => 'usuario_id',
             'correo'  => 'correo',
             'grupo'   => 'Profesor',
+            'tipo'    => 1,
         ],
         // ProfesoresConAlumnosInscritos.txt, el archivo del sistema escolar.
         'importar' => [
