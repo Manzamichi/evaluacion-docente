@@ -101,11 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($id === 0) {
-                crear($pdo, 'usuarios', $usuario);
+                crear($pdo, 'usuarios', $usuario + ['tipo' => 2]);
                 $usuarioId = (int) $pdo->lastInsertId();
 
-                $pdo->prepare('INSERT INTO alumnos (matricula, usuario_id) VALUES (?, ?)')
-                    ->execute([$datos['matricula'], $usuarioId]);
+                $pdo->prepare('INSERT INTO alumnos (matricula, usuario_id, creado_por, editado_por) VALUES (?, ?, ?, ?)')
+                    ->execute([$datos['matricula'], $usuarioId, usuarioActual(), usuarioActual()]);
 
                 // Sin el grupo "Alumno" en la base, la cuenta queda sin grupo.
                 $pdo->prepare("INSERT INTO usuario_grupo (usuario_id, grupo_id)
@@ -114,8 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 actualizar($pdo, 'usuarios', $usuarioId, $usuario);
 
-                $pdo->prepare('UPDATE alumnos SET matricula = ? WHERE id = ?')
-                    ->execute([$datos['matricula'], $id]);
+                $pdo->prepare('UPDATE alumnos SET matricula = ?, editado_por = ? WHERE id = ?')
+                    ->execute([$datos['matricula'], usuarioActual(), $id]);
             }
         }
 
