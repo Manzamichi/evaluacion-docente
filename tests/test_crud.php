@@ -476,6 +476,8 @@ assert($usuario['usuario'] === 'ana.lopez' && $usuario['estado'] === '1');
 assert(password_verify('Secreta123!', $usuario['password_hash']));
 // el correo del usuario se copia del registro
 assert(!isset($usuario['nombre']) && $usuario['correo'] === 'ana@x.mx');
+// el usuario de un profesor nace con tipo 1
+assert($usuario['tipo'] === 1);
 
 // Al editar, contraseña vacía = no cambiar: no viaja al UPDATE de usuarios
 $datos   = saneaEntrada($cfgProf, ['password_hash' => ''] + $datos + ['usuario' => 'ana.lopez', 'estado' => '0'], false);
