@@ -11,10 +11,11 @@ USE evaluacion_docente;
 --   admin1   / Admin123!
 --   alumno1  / Alumno123!
 --   docente1 / Docente123!
-INSERT INTO usuarios (usuario, correo, password_hash) VALUES
-    ('admin1', 'admin1@evaluaciondocente.local', '$2y$12$.IISUeAsMxnje8rRC7yQvuW6m.BAFDEiK01wkBOBeFe.ZIcRXZSPK'),
-    ('alumno1', 'alumno1@evaluaciondocente.local', '$2y$10$weJZQLbx5jDL/wFawdzU9uohaxgYXpSq2NCS1LexS2/gx8whUweqa'),
-    ('docente1', 'docente1@evaluaciondocente.local', '$2y$10$/sbf3KpCJk7S7mwvWKIw1OMqYE/FqztrsG.JFZvaiSycwQq3B5CCW')
+-- tipo: 0 = otro, 1 = profesor, 2 = alumno.
+INSERT INTO usuarios (usuario, correo, password_hash, tipo) VALUES
+    ('admin1', 'admin1@evaluaciondocente.local', '$2y$12$.IISUeAsMxnje8rRC7yQvuW6m.BAFDEiK01wkBOBeFe.ZIcRXZSPK', 0),
+    ('alumno1', 'alumno1@evaluaciondocente.local', '$2y$10$weJZQLbx5jDL/wFawdzU9uohaxgYXpSq2NCS1LexS2/gx8whUweqa', 2),
+    ('docente1', 'docente1@evaluaciondocente.local', '$2y$10$/sbf3KpCJk7S7mwvWKIw1OMqYE/FqztrsG.JFZvaiSycwQq3B5CCW', 1)
 ON DUPLICATE KEY UPDATE usuario = usuario;
 
 -- Grupos = roles. es_admin = 1 ve todos los módulos sin necesidad de asignarlos.
