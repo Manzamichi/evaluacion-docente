@@ -72,7 +72,7 @@ return [
     'usuarios' => [
         'etiqueta'   => 'Usuarios',
         'por_pagina' => 10,
-        'listar'     => ['id', 'usuario', 'correo', 'estado', 'creado_en'],
+        'listar'     => ['id', 'usuario', 'correo', 'estado'],
         'campos'     => [
             'usuario' => [
                 'etiqueta'  => 'Usuario',
@@ -359,6 +359,326 @@ return [
                 'requerido'   => true,
                 'min'         => 1,
                 'al_final_de' => 'instrumento_id',
+            ],
+        ],
+    ],
+
+    // --- Estructura académica ---
+
+    'planes_estudio' => [
+        'etiqueta' => 'Planes de estudio',
+        'listar'   => ['id', 'nombre', 'siglas', 'clave', 'version', 'fecha_inicio'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'siglas' => [
+                'etiqueta' => 'Siglas',
+                'tipo'     => 'text',
+            ],
+            'clave' => [
+                'etiqueta' => 'Clave',
+                'tipo'     => 'text',
+            ],
+            'version' => [
+                'etiqueta' => 'Versión',
+                'tipo'     => 'text',
+            ],
+            'fecha_inicio' => [
+                'etiqueta' => 'Fecha de inicio',
+                'tipo'     => 'date',
+            ],
+            'comentarios' => [
+                'etiqueta' => 'Comentarios',
+                'tipo'     => 'text',
+            ],
+        ],
+    ],
+
+    'ciclos_escolares' => [
+        'etiqueta' => 'Ciclos escolares',
+        'listar'   => ['id', 'nombre', 'activo', 'orden'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            // ponytail: que solo haya un ciclo activo aún no se cuida; va en
+            // la fase de funciones propias de cada pantalla.
+            'activo' => [
+                'etiqueta'  => 'Activo',
+                'tipo'      => 'select',
+                'requerido' => true,
+                'opciones'  => ['1', '0'],
+                'etiquetas' => ['1' => 'Sí', '0' => 'No'],
+                'defecto'   => '0',
+            ],
+            'orden' => [
+                'etiqueta' => 'Orden',
+                'tipo'     => 'number',
+                'min'      => 0,
+            ],
+            'comentarios' => [
+                'etiqueta' => 'Comentarios',
+                'tipo'     => 'text',
+            ],
+        ],
+    ],
+
+    'asignaturas' => [
+        'etiqueta' => 'Asignaturas',
+        'listar'   => ['id', 'clave', 'nombre', 'plan_id'],
+        'campos'   => [
+            'clave' => [
+                'etiqueta'  => 'Clave',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'nombre' => [
+                'etiqueta'  => 'Nombre',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'plan_id' => [
+                'etiqueta'    => 'Plan de estudio',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'planes_estudio', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'comentarios' => [
+                'etiqueta' => 'Comentarios',
+                'tipo'     => 'text',
+            ],
+        ],
+    ],
+
+    // Los planes que coordina cada uno (pivote coordinador_plan) no son un
+    // CRUD: se asignarán con una pantalla tipo asignar.php.
+    'coordinadores' => [
+        'etiqueta' => 'Coordinadores',
+        'listar'   => ['id', 'nombre', 'profesor_id'],
+        'campos'   => [
+            'nombre' => [
+                'etiqueta'  => 'Cargo',
+                'tipo'      => 'text',
+                'requerido' => true,
+            ],
+            'profesor_id' => [
+                'etiqueta'    => 'Profesor (clave)',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'profesores', 'muestra' => 'clave', 'guarda' => 'id'],
+            ],
+        ],
+    ],
+
+    'cargas_academicas' => [
+        'etiqueta' => 'Cargas académicas',
+        'listar'   => ['id', 'ciclo_escolar_id', 'asignatura_id', 'profesor_id', 'matricula', 'clave_grupo', 'grupo'],
+        'campos'   => [
+            'ciclo_escolar_id' => [
+                'etiqueta'    => 'Ciclo escolar',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'ciclos_escolares', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'asignatura_id' => [
+                'etiqueta'    => 'Asignatura',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'asignaturas', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'profesor_id' => [
+                'etiqueta'    => 'Profesor (clave)',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'profesores', 'muestra' => 'clave', 'guarda' => 'id'],
+            ],
+            // La matrícula del alumno, no una FK: alumnos no es un CRUD de
+            // tables.php y la carga puede llegar antes que la cuenta.
+            'matricula' => [
+                'etiqueta'  => 'Matrícula',
+                'tipo'      => 'text',
+                'requerido' => true,
+                'patron'    => 'validarMatriculaAlumno',
+            ],
+            'clave_grupo' => [
+                'etiqueta' => 'Clave de grupo',
+                'tipo'     => 'text',
+            ],
+            'grupo' => [
+                'etiqueta' => 'Grupo',
+                'tipo'     => 'text',
+            ],
+        ],
+    ],
+
+    // --- Evaluación ---
+
+    'evaluaciones' => [
+        'etiqueta' => 'Evaluaciones',
+        'listar'   => ['id', 'fecha_inicio', 'fecha_fin', 'plan_id', 'ciclo_escolar_id', 'instrumento_id'],
+        'campos'   => [
+            'fecha_inicio' => [
+                'etiqueta'  => 'Fecha de inicio',
+                'tipo'      => 'date',
+                'requerido' => true,
+            ],
+            'fecha_fin' => [
+                'etiqueta'  => 'Fecha de fin',
+                'tipo'      => 'date',
+                'requerido' => true,
+            ],
+            'plan_id' => [
+                'etiqueta'    => 'Plan de estudio',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'planes_estudio', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'ciclo_escolar_id' => [
+                'etiqueta'    => 'Ciclo escolar',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'ciclos_escolares', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'instrumento_id' => [
+                'etiqueta'    => 'Instrumento',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'instrumentos', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+        ],
+    ],
+
+    // selecciones, comentarios y respuestas las llena el sistema cuando el
+    // alumno contesta. Los selects de evaluación, carga y pregunta muestran el
+    // id: esas tablas no tienen una columna que sirva de nombre.
+    'selecciones' => [
+        'etiqueta' => 'Selecciones',
+        'listar'   => ['id', 'evaluacion_id', 'carga_academica_id', 'evaluo', 'fecha'],
+        'campos'   => [
+            'evaluacion_id' => [
+                'etiqueta'    => 'Evaluación',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'evaluaciones', 'muestra' => 'id', 'guarda' => 'id'],
+            ],
+            'carga_academica_id' => [
+                'etiqueta'    => 'Carga académica',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'cargas_academicas', 'muestra' => 'id', 'guarda' => 'id'],
+            ],
+            'evaluo' => [
+                'etiqueta'  => 'Evaluó',
+                'tipo'      => 'select',
+                'requerido' => true,
+                'opciones'  => ['1', '0'],
+                'etiquetas' => ['1' => 'Sí', '0' => 'No'],
+                'defecto'   => '0',
+            ],
+            'fecha' => [
+                'etiqueta' => 'Fecha',
+                'tipo'     => 'date',
+            ],
+        ],
+    ],
+
+    'comentarios' => [
+        'etiqueta' => 'Comentarios',
+        'listar'   => ['id', 'evaluacion_id', 'ciclo_escolar_id', 'asignatura_id', 'profesor_id', 'clave_grupo', 'fecha'],
+        'campos'   => [
+            'comentario' => [
+                'etiqueta'  => 'Comentario',
+                'tipo'      => 'textarea',
+                'requerido' => true,
+            ],
+            // DATETIME: texto 'AAAA-MM-DD hh:mm:ss'. datetime-local pide una T
+            // en medio y no mostraría el valor guardado al editar.
+            'fecha' => [
+                'etiqueta' => 'Fecha',
+                'tipo'     => 'text',
+            ],
+            'evaluacion_id' => [
+                'etiqueta'    => 'Evaluación',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'evaluaciones', 'muestra' => 'id', 'guarda' => 'id'],
+            ],
+            'ciclo_escolar_id' => [
+                'etiqueta'    => 'Ciclo escolar',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'ciclos_escolares', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'asignatura_id' => [
+                'etiqueta'    => 'Asignatura',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'asignaturas', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'profesor_id' => [
+                'etiqueta'    => 'Profesor (clave)',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'profesores', 'muestra' => 'clave', 'guarda' => 'id'],
+            ],
+            'clave_grupo' => [
+                'etiqueta' => 'Clave de grupo',
+                'tipo'     => 'text',
+            ],
+        ],
+    ],
+
+    'respuestas' => [
+        'etiqueta' => 'Respuestas',
+        'listar'   => ['id', 'evaluacion_id', 'pregunta_id', 'respuesta', 'profesor_id', 'clave_grupo', 'fecha'],
+        'campos'   => [
+            'pregunta_id' => [
+                'etiqueta'    => 'Pregunta',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'preguntas', 'muestra' => 'id', 'guarda' => 'id'],
+            ],
+            'respuesta' => [
+                'etiqueta' => 'Respuesta',
+                'tipo'     => 'textarea',
+            ],
+            // Igual que en comentarios: DATETIME como texto.
+            'fecha' => [
+                'etiqueta' => 'Fecha',
+                'tipo'     => 'text',
+            ],
+            'evaluacion_id' => [
+                'etiqueta'    => 'Evaluación',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'evaluaciones', 'muestra' => 'id', 'guarda' => 'id'],
+            ],
+            'ciclo_escolar_id' => [
+                'etiqueta'    => 'Ciclo escolar',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'ciclos_escolares', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'asignatura_id' => [
+                'etiqueta'    => 'Asignatura',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'asignaturas', 'muestra' => 'nombre', 'guarda' => 'id'],
+            ],
+            'profesor_id' => [
+                'etiqueta'    => 'Profesor (clave)',
+                'tipo'        => 'select',
+                'requerido'   => true,
+                'opciones_de' => ['tabla' => 'profesores', 'muestra' => 'clave', 'guarda' => 'id'],
+            ],
+            'clave_grupo' => [
+                'etiqueta' => 'Clave de grupo',
+                'tipo'     => 'text',
             ],
         ],
     ],
