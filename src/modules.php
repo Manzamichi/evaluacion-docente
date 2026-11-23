@@ -195,4 +195,74 @@ return [
         ],
         'volver' => 'grupo/admin',
     ],
+
+    // Estructura académica
+    'plan/admin' => [
+        'crud'     => 'planes_estudio',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    'ciclo/admin' => [
+        'crud'     => 'ciclos_escolares',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    'asignatura/admin' => [
+        'crud'     => 'asignaturas',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    'coordinador/admin' => [
+        'crud'     => 'coordinadores',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    'carga/admin' => [
+        'crud'     => 'cargas_academicas',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    // Evaluación
+    'evaluacion/admin' => [
+        'crud'     => 'evaluaciones',
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
+        ],
+    ],
+
+    // Resultados que llena el sistema al contestar. Solo CRUD básico: sin
+    // 'acciones' no hay exportar ni importar (tabla_crud.php responde 404).
+    'seleccion/admin' => [
+        'crud' => 'selecciones',
+    ],
+
+    'comentario/admin' => [
+        'crud' => 'comentarios',
+    ],
+
+    'respuesta/admin' => [
+        'crud' => 'respuestas',
+    ],
 ];
