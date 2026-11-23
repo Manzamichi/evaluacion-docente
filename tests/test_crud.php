@@ -236,30 +236,40 @@ $comodines = clausulaWhere(['nombre' => '100%_a']);
 assert($comodines['valores'] === ['%100\\%\\_a%']);
 assert(str_contains($comodines['sql'], 'ESCAPE'));
 
+// Una columna FK se busca por el texto que se ve (subconsulta), no por su id
+$fk = expresionesFk('asignaturas', tablaConfig('asignaturas'));
+assert(isset($fk['plan_id']) && !isset($fk['clave']));
+assert(str_contains($fk['plan_id'], '`planes_estudio`') && str_contains($fk['plan_id'], '`asignaturas`.`plan_id`'));
+assert(str_starts_with(clausulaWhere(['plan_id' => 'x'], $fk)['sql'], ' WHERE (SELECT d.`nombre`'));
+assert(clausulaWhere(['clave' => 'x'], $fk)['sql'] === clausulaWhere(['clave' => 'x'])['sql']);
+
 // --- Columnas del panel de detalle ---
 
 // La contraseña de usuarios se excluye sola por su 'hash' => true: es lo único
 // que separa un hash bcrypt del HTML que ve cualquiera con acceso al módulo.
-assert(columnasOcultas($cfg) === ['password_hash']);
+assert(columnasOcultas($cfg) === [...COLUMNAS_AUDITORIA, 'password_hash']);
 
-// Una tabla sin campos con hash ni 'ocultar' no esconde nada
-assert(columnasOcultas(tablaConfig('grupos')) === []);
-assert(columnasOcultas(tablaConfig('modulos')) === []);
+// La auditoría se oculta siempre, aunque la tabla no declare nada
+assert(columnasOcultas(tablaConfig('grupos')) === COLUMNAS_AUDITORIA);
+assert(columnasOcultas(tablaConfig('modulos')) === COLUMNAS_AUDITORIA);
+assert(columnasOcultas([]) === COLUMNAS_AUDITORIA);
 
 // 'ocultar' cubre columnas sensibles que no son contraseñas, y una columna que
 // caiga en las dos listas no se repite
 assert(columnasOcultas([
     'ocultar' => ['token', 'curp'],
     'campos'  => ['clave' => ['hash' => true]],
-]) === ['token', 'curp', 'clave']);
+]) === [...COLUMNAS_AUDITORIA, 'token', 'curp', 'clave']);
 
 assert(columnasOcultas([
     'ocultar' => ['clave'],
     'campos'  => ['clave' => ['hash' => true]],
-]) === ['clave']);
+]) === [...COLUMNAS_AUDITORIA, 'clave']);
 
-// Sin ninguna de las dos claves no truena
-assert(columnasOcultas([]) === []);
+// Ninguna tabla declarada lista una columna de auditoría en el listado
+foreach (tablas() as $nombre => $t) {
+    assert(array_intersect($t['listar'], COLUMNAS_AUDITORIA) === [], $nombre);
+}
 
 // --- Paginación ---
 
