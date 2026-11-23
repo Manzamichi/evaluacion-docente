@@ -68,14 +68,20 @@ function filtrosDesde(array $cfg, array $entrada): array
 }
 
 /**
- * Columnas que el detalle nunca muestra: las que se guardan con hash y las que
- * la tabla marque en 'ocultar'.
+ * Columnas de auditoría que tiene toda tabla no pivote. Las llena crear(),
+ * actualizar() y MySQL; nunca se muestran ni se exportan.
+ */
+const COLUMNAS_AUDITORIA = ['creado_en', 'creado_por', 'editado_en', 'editado_por'];
+
+/**
+ * Columnas que el detalle nunca muestra: las de auditoría, las que se guardan
+ * con hash y las que la tabla marque en 'ocultar'.
  *
  * @return string[]
  */
 function columnasOcultas(array $cfg): array
 {
-    $ocultas = $cfg['ocultar'] ?? [];
+    $ocultas = [...COLUMNAS_AUDITORIA, ...($cfg['ocultar'] ?? [])];
 
     foreach ($cfg['campos'] ?? [] as $col => $campo) {
         if (!empty($campo['hash'])) {
@@ -116,7 +122,7 @@ function columnasDetalle(PDO $pdo, string $tabla, array $cfg): array
  * marcadores. Los comodines de LIKE se escapan para que buscar "100%" o "a_b"
  * encuentre el texto literal y no cualquier cosa.
  */
-function clausulaWhere(array $filtros): array
+function clausulaWhere(array $filtros, array $expresiones = []): array
 {
     if ($filtros === []) {
         return ['sql' => '', 'valores' => []];
@@ -126,7 +132,7 @@ function clausulaWhere(array $filtros): array
     $valores     = [];
 
     foreach ($filtros as $col => $valor) {
-        $condiciones[] = ident($col) . " LIKE ? ESCAPE '\\\\'";
+        $condiciones[] = ($expresiones[$col] ?? ident($col)) . " LIKE ? ESCAPE '\\\\'";
         $valores[]     = '%' . addcslashes($valor, '%_\\') . '%';
     }
 
@@ -134,6 +140,38 @@ function clausulaWhere(array $filtros): array
         'sql'     => ' WHERE ' . implode(' AND ', $condiciones),
         'valores' => $valores,
     ];
+}
+
+/**
+ * Para cada columna FK del listado ('opciones_de' con 'guarda' => 'id'), la
+ * subconsulta que trae el texto que se ve en su lugar: el nombre del plan en
+ * vez de su id. Es solo presentación: la columna guarda el id igual, y el
+ * formulario, la exportación y la importación siguen trabajando con él.
+ *
+ * Las tablas y columnas salen de tables.php (tablaConfig() e ident()), nunca
+ * del request.
+ *
+ * @return array<string, string> columna => expresión SQL
+ */
+function expresionesFk(string $tabla, array $cfg): array
+{
+    $expresiones = [];
+
+    foreach ($cfg['campos'] ?? [] as $col => $campo) {
+        $origen = $campo['opciones_de'] ?? null;
+
+        if ($origen === null || ($origen['guarda'] ?? null) !== 'id') {
+            continue;
+        }
+
+        tablaConfig($origen['tabla']);
+
+        $expresiones[$col] = '(SELECT d.' . ident($origen['muestra'])
+            . ' FROM ' . ident($origen['tabla']) . ' d'
+            . ' WHERE d.id = ' . ident($tabla) . '.' . ident($col) . ')';
+    }
+
+    return $expresiones;
 }
 
 /**
@@ -160,8 +198,13 @@ function listar(PDO $pdo, string $tabla, array $filtros = [], int $pagina = 1): 
 
     // Se piden las columnas del detalle, no solo las de 'listar': el panel las
     // necesita todas y así no hace falta una segunda consulta por fila.
-    $cols  = implode(', ', array_map('ident', columnasDetalle($pdo, $tabla, $cfg)));
-    $where = clausulaWhere(filtrosDesde($cfg, $filtros));
+    // Las columnas FK salen como texto (ver expresionesFk()); el resto, tal cual.
+    $fk   = expresionesFk($tabla, $cfg);
+    $cols = implode(', ', array_map(
+        static fn (string $c): string => isset($fk[$c]) ? $fk[$c] . ' AS ' . ident($c) : ident($c),
+        columnasDetalle($pdo, $tabla, $cfg)
+    ));
+    $where = clausulaWhere(filtrosDesde($cfg, $filtros), $fk);
 
     $porPagina = max(1, (int) ($cfg['por_pagina'] ?? FILAS_POR_PAGINA));
 
