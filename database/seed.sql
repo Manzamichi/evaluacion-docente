@@ -29,7 +29,9 @@ ON DUPLICATE KEY UPDATE nombre = nombre;
 -- Categorías del menú. Van antes que los módulos: modulos.categoria es FK.
 INSERT INTO categorias (nombre, orden) VALUES
     ('Seguridad', 10),
-    ('Instrumentos', 20)
+    ('Instrumentos', 20),
+    ('Académico', 30),
+    ('Evaluación', 40)
 ON DUPLICATE KEY UPDATE orden = VALUES(orden);
 
 -- Módulos = pantallas. La `url` debe existir en src/modules.php para poder
@@ -48,7 +50,16 @@ INSERT INTO modulos (nombre, descripcion, url, categoria, orden) VALUES
     ('Preguntas del instrumento', 'Ver y ordenar sus preguntas', 'instrumento/preguntas', 'Instrumentos', 15),
     ('Preguntas',    'Preguntas de cada instrumento', 'pregunta/admin',    'Instrumentos', 20),
     ('Dimensiones',  'Dimensiones que agrupan preguntas', 'dimension/admin', 'Instrumentos', 30),
-    ('Tipos de pregunta', 'Formatos de respuesta', 'tipo_pregunta/admin', 'Instrumentos', 40)
+    ('Tipos de pregunta', 'Formatos de respuesta', 'tipo_pregunta/admin', 'Instrumentos', 40),
+    ('Planes de estudio', 'Planes y sus versiones',   'plan/admin',        'Académico', 10),
+    ('Ciclos escolares', 'Semestres y el ciclo activo', 'ciclo/admin',     'Académico', 20),
+    ('Asignaturas',  'Materias de cada plan',         'asignatura/admin',  'Académico', 30),
+    ('Coordinadores', 'Cargos de coordinación',       'coordinador/admin', 'Académico', 40),
+    ('Cargas académicas', 'Alumno, asignatura y profesor por ciclo', 'carga/admin', 'Académico', 50),
+    ('Evaluaciones', 'Periodos de evaluación',        'evaluacion/admin',  'Evaluación', 10),
+    ('Selecciones',  'Quién ya evaluó cada carga',    'seleccion/admin',   'Evaluación', 20),
+    ('Comentarios',  'Comentarios anónimos',          'comentario/admin',  'Evaluación', 30),
+    ('Respuestas',   'Respuestas anónimas',           'respuesta/admin',   'Evaluación', 40)
 ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), categoria = VALUES(categoria), orden = VALUES(orden);
 
 -- admin1 es Administrador; los otros dos, su grupo correspondiente.
