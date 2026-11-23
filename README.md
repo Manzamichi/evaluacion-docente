@@ -193,6 +193,12 @@ las consultó.
 > `'ocultar' => ['columna']` a nivel de tabla. La exclusión ocurre en el
 > `SELECT`, no en la plantilla: lo que no sale de la base no se puede filtrar
 > por una vista mal escrita.
+>
+> Las columnas de auditoría (`creado_en`, `creado_por`, `editado_en`,
+> `editado_por`, constante `COLUMNAS_AUDITORIA` en `crud.php`) se ocultan
+> siempre, en todas las tablas: no van en `listar` ni salen en el detalle ni en
+> lo exportado. Las tablas pivote (`grupo_modulo`, `coordinador_plan`) no se
+> declaran en `tables.php`: se editan con una pantalla de asignación.
 
 Con `acciones` se agregan enlaces **por registro** hacia otro módulo, que reciben
 `?id=`:
