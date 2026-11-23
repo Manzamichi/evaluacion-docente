@@ -59,7 +59,7 @@ $cfg = [
 // por estas columnas sin ambigüedad (`id` existe en las dos tablas), y el
 // estado ya sale como texto para que se pueda buscar "activo".
 $fuente = "(SELECT a.id, a.matricula, u.usuario,
-                   IF(u.estado = 1, 'Activo', 'Inactivo') AS estado, u.creado_en
+                   IF(u.estado = 1, 'Activo', 'Inactivo') AS estado
             FROM alumnos a JOIN usuarios u ON u.id = a.usuario_id) AS lista";
 
 $filtros    = filtrosDesde($cfg, (array) ($_GET['f'] ?? []));
@@ -201,5 +201,5 @@ componente('tabla', [
         'porPagina' => FILAS_POR_PAGINA,
     ],
     'filtros'  => $filtros,
-    'columnas' => ['id', 'matricula', 'usuario', 'estado', 'creado_en'],
+    'columnas' => ['id', 'matricula', 'usuario', 'estado'],
 ]);
