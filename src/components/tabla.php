@@ -52,8 +52,12 @@ $acciones = array_values(array_filter(
             <tr>
                 <?php foreach ($cfg['listar'] as $col): ?>
                     <th>
-                        <?php // Una FK se ve como el texto de su registro: el encabezado, como su etiqueta. ?>
-                        <?= e(isset($cfg['campos'][$col]['opciones_de']['guarda']) ? $cfg['campos'][$col]['etiqueta'] : $col) ?>
+                        <?php // Una FK, un select con texto o una calculada no se ven como su columna: el encabezado, como su etiqueta. ?>
+                        <?= e(
+                            isset($cfg['calculadas'][$col]) ? $cfg['calculadas'][$col]['etiqueta']
+                            : (isset($cfg['campos'][$col]['opciones_de']['guarda']) || !empty($cfg['campos'][$col]['texto_en_lista'])
+                                ? $cfg['campos'][$col]['etiqueta'] : $col)
+                        ) ?>
                         <input type="search"
                                form="busqueda"
                                name="f[<?= e($col) ?>]"
