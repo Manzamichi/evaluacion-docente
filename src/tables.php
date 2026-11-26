@@ -36,9 +36,19 @@ declare(strict_types=1);
  *                 min, max   Rango de un entero (tipo number). Van en el <input>
  *                            y se vuelven a comprobar al guardar.
  *                 defecto    Valor con el que arranca el campo en un alta
+ *                 texto_en_lista  true en un select fijo con 'etiquetas': el listado
+ *                            y el detalle muestran el texto ('Sí') y no el valor
+ *                            guardado ('1'); la búsqueda también usa el texto.
+ *                 no_antes_de  Otra columna de fecha: este campo no puede ir antes
+ *                            que ella (el mismo día sí). Se valida al guardar.
  *                 al_final_de  Columna de grupo (p. ej. 'instrumento_id'). En un alta
  *                            el campo no se muestra y crear() pone MAX + 1 de ese
  *                            grupo: el registro nuevo va al final.
+ *   calculadas  Columnas del listado que no existen en la tabla y salen de otra
+ *               por una FK: 'nombre_columna' => ['etiqueta' => ..., 'tabla' => ...,
+ *               'fk' => columna FK de esta tabla, 'columna' => columna de la otra].
+ *               Se ponen también en 'listar'. Solo se ven y se buscan: no se
+ *               editan, ni se exportan ni se importan.
  *   acciones    Enlaces extra por fila hacia otro módulo, que reciben ?id=
  *   ocultar     Columnas que el panel de detalle nunca muestra, porque son
  *               sensibles (tokens, CURP, RFC). Las que ya tienen 'hash' => true
@@ -399,7 +409,7 @@ return [
 
     'ciclos_escolares' => [
         'etiqueta' => 'Ciclos escolares',
-        'listar'   => ['id', 'nombre', 'activo', 'orden'],
+        'listar'   => ['id', 'nombre', 'activo', 'orden', 'comentarios'],
         'campos'   => [
             'nombre' => [
                 'etiqueta'  => 'Nombre',
@@ -409,12 +419,13 @@ return [
             // ponytail: que solo haya un ciclo activo aún no se cuida; va en
             // la fase de funciones propias de cada pantalla.
             'activo' => [
-                'etiqueta'  => 'Activo',
-                'tipo'      => 'select',
-                'requerido' => true,
-                'opciones'  => ['1', '0'],
-                'etiquetas' => ['1' => 'Sí', '0' => 'No'],
-                'defecto'   => '0',
+                'etiqueta'       => 'Actual',
+                'tipo'           => 'select',
+                'requerido'      => true,
+                'opciones'       => ['1', '0'],
+                'etiquetas'      => ['1' => 'Sí', '0' => 'No'],
+                'texto_en_lista' => true,
+                'defecto'        => '0',
             ],
             'orden' => [
                 'etiqueta' => 'Orden',
@@ -477,7 +488,33 @@ return [
 
     'cargas_academicas' => [
         'etiqueta' => 'Cargas académicas',
-        'listar'   => ['id', 'ciclo_escolar_id', 'asignatura_id', 'profesor_id', 'matricula', 'clave_grupo', 'grupo'],
+        'listar'   => [
+            'id', 'ciclo_escolar_id', 'asignatura_id',
+            'profesor_nombres', 'profesor_apellido_paterno', 'profesor_apellido_materno',
+            'matricula', 'clave_grupo', 'grupo',
+        ],
+        // profesor_id sigue en el formulario y en el detalle (como clave); en el
+        // listado se ve con el nombre del profesor.
+        'calculadas' => [
+            'profesor_nombres' => [
+                'etiqueta' => 'Profesor (nombre)',
+                'tabla'    => 'profesores',
+                'fk'       => 'profesor_id',
+                'columna'  => 'nombres',
+            ],
+            'profesor_apellido_paterno' => [
+                'etiqueta' => 'Profesor (apellido paterno)',
+                'tabla'    => 'profesores',
+                'fk'       => 'profesor_id',
+                'columna'  => 'apellido_paterno',
+            ],
+            'profesor_apellido_materno' => [
+                'etiqueta' => 'Profesor (apellido materno)',
+                'tabla'    => 'profesores',
+                'fk'       => 'profesor_id',
+                'columna'  => 'apellido_materno',
+            ],
+        ],
         'campos'   => [
             'ciclo_escolar_id' => [
                 'etiqueta'    => 'Ciclo escolar',
@@ -528,9 +565,10 @@ return [
                 'requerido' => true,
             ],
             'fecha_fin' => [
-                'etiqueta'  => 'Fecha de fin',
-                'tipo'      => 'date',
-                'requerido' => true,
+                'etiqueta'    => 'Fecha de fin',
+                'tipo'        => 'date',
+                'requerido'   => true,
+                'no_antes_de' => 'fecha_inicio',
             ],
             'plan_id' => [
                 'etiqueta'    => 'Plan de estudio',
