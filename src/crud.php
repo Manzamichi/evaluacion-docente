@@ -143,10 +143,27 @@ function clausulaWhere(array $filtros, array $expresiones = []): array
 }
 
 /**
- * Para cada columna FK del listado ('opciones_de' con 'guarda' => 'id'), la
- * subconsulta que trae el texto que se ve en su lugar: el nombre del plan en
- * vez de su id. Es solo presentación: la columna guarda el id igual, y el
- * formulario, la exportación y la importación siguen trabajando con él.
+ * Literal SQL entre comillas para valores que salen de tables.php (nunca del
+ * request): las etiquetas de un select, que no se pueden mandar como marcador
+ * porque forman parte de una expresión que se repite en SELECT y WHERE.
+ */
+function literalSql(string $valor): string
+{
+    return "'" . str_replace(['\\', "'"], ['\\\\', "''"], $valor) . "'";
+}
+
+/**
+ * Expresiones SQL que cambian lo que el listado muestra y busca, por columna:
+ *
+ *   - FK ('opciones_de' con 'guarda' => 'id'): el texto del registro apuntado,
+ *     el nombre del plan en vez de su id.
+ *   - Select fijo con 'texto_en_lista' => true: el texto de 'etiquetas' ('Sí')
+ *     en vez del valor guardado ('1').
+ *   - 'calculadas' de la tabla: columnas que no existen en ella y salen de otra
+ *     por una FK (el nombre del profesor de una carga).
+ *
+ * Es solo presentación: la columna guarda el valor real, y el formulario, la
+ * exportación y la importación siguen trabajando con él.
  *
  * Las tablas y columnas salen de tables.php (tablaConfig() e ident()), nunca
  * del request.
@@ -160,15 +177,30 @@ function expresionesFk(string $tabla, array $cfg): array
     foreach ($cfg['campos'] ?? [] as $col => $campo) {
         $origen = $campo['opciones_de'] ?? null;
 
-        if ($origen === null || ($origen['guarda'] ?? null) !== 'id') {
-            continue;
+        if ($origen !== null && ($origen['guarda'] ?? null) === 'id') {
+            tablaConfig($origen['tabla']);
+
+            $expresiones[$col] = '(SELECT d.' . ident($origen['muestra'])
+                . ' FROM ' . ident($origen['tabla']) . ' d'
+                . ' WHERE d.id = ' . ident($tabla) . '.' . ident($col) . ')';
+        } elseif (!empty($campo['texto_en_lista']) && isset($campo['etiquetas'])) {
+            $propia = ident($tabla) . '.' . ident($col);
+            $casos  = '';
+
+            foreach ($campo['etiquetas'] as $valor => $texto) {
+                $casos .= ' WHEN ' . literalSql((string) $valor) . ' THEN ' . literalSql((string) $texto);
+            }
+
+            $expresiones[$col] = 'CASE ' . $propia . $casos . ' ELSE CAST(' . $propia . ' AS CHAR) END';
         }
+    }
 
-        tablaConfig($origen['tabla']);
+    foreach ($cfg['calculadas'] ?? [] as $col => $calculada) {
+        tablaConfig($calculada['tabla']);
 
-        $expresiones[$col] = '(SELECT d.' . ident($origen['muestra'])
-            . ' FROM ' . ident($origen['tabla']) . ' d'
-            . ' WHERE d.id = ' . ident($tabla) . '.' . ident($col) . ')';
+        $expresiones[$col] = '(SELECT d.' . ident($calculada['columna'])
+            . ' FROM ' . ident($calculada['tabla']) . ' d'
+            . ' WHERE d.id = ' . ident($tabla) . '.' . ident($calculada['fk']) . ')';
     }
 
     return $expresiones;
@@ -204,6 +236,12 @@ function listar(PDO $pdo, string $tabla, array $filtros = [], int $pagina = 1): 
         static fn (string $c): string => isset($fk[$c]) ? $fk[$c] . ' AS ' . ident($c) : ident($c),
         columnasDetalle($pdo, $tabla, $cfg)
     ));
+
+    // Las calculadas no son columnas de la tabla: solo existen en el SELECT.
+    foreach (array_keys($cfg['calculadas'] ?? []) as $col) {
+        $cols .= ', ' . $fk[$col] . ' AS ' . ident($col);
+    }
+
     $where = clausulaWhere(filtrosDesde($cfg, $filtros), $fk);
 
     $porPagina = max(1, (int) ($cfg['por_pagina'] ?? FILAS_POR_PAGINA));
@@ -259,7 +297,8 @@ function exportarFilas(PDO $pdo, string $tabla, array $filtros = []): PDOStateme
     $cfg = tablaConfig($tabla);
 
     $cols  = implode(', ', array_map('ident', columnasDetalle($pdo, $tabla, $cfg)));
-    $where = clausulaWhere(filtrosDesde($cfg, $filtros));
+    // Mismas expresiones que listar(): se exporta lo que la búsqueda mostró.
+    $where = clausulaWhere(filtrosDesde($cfg, $filtros), expresionesFk($tabla, $cfg));
 
     $stmt = $pdo->prepare(
         'SELECT ' . $cols . ' FROM ' . ident($tabla) . $where['sql'] . ' ORDER BY id DESC'
@@ -1139,7 +1178,40 @@ function saneaEntrada(array $cfg, array $entrada, bool $esNuevo): array
         $datos[$col] = $valor === '' ? null : $valor;
     }
 
+    verificaOrdenFechas($cfg, $datos);
+
     return $datos;
+}
+
+/**
+ * 'no_antes_de' => 'otra_columna': la fecha del campo no puede ser anterior a la
+ * de esa otra (el mismo día sí). Va aparte porque compara dos campos, y la
+ * validación por campo de saneaEntrada() solo ve uno. Si falta alguna de las
+ * dos, o no tiene forma de fecha, no se compara: lo demás ya lo valida cada campo.
+ *
+ * @throws InvalidArgumentException si la fecha va antes que la otra
+ */
+function verificaOrdenFechas(array $cfg, array $datos): void
+{
+    foreach ($cfg['campos'] as $col => $campo) {
+        $otra = $campo['no_antes_de'] ?? null;
+
+        if ($otra === null) {
+            continue;
+        }
+
+        $fecha  = (string) ($datos[$col] ?? '');
+        $limite = (string) ($datos[$otra] ?? '');
+
+        $esFecha = static fn (string $v): bool => preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) === 1;
+
+        // Formato AAAA-MM-DD: comparar como texto es comparar como fecha.
+        if ($esFecha($fecha) && $esFecha($limite) && $fecha < $limite) {
+            throw new InvalidArgumentException(
+                "«{$campo['etiqueta']}» no puede ser anterior a «{$cfg['campos'][$otra]['etiqueta']}»."
+            );
+        }
+    }
 }
 
 /**
