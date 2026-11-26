@@ -165,6 +165,16 @@ con botones + y −; se guarda como `1:Sí,2:No`, así que el valor es entero y 
 respuesta no lleva comas. Con `'solo_si' => ['tipo', '3']` un campo solo aplica
 cuando otra columna tiene ese valor: se oculta en el formulario y se guarda NULL.
 
+Con `'texto_en_lista' => true` en un `select` fijo con `etiquetas`, el listado y
+el detalle muestran el texto (`Sí`) en vez del valor guardado (`1`), con el
+encabezado de la etiqueta del campo; la búsqueda también usa el texto. Con
+`'no_antes_de' => 'fecha_inicio'` en un campo de fecha, `saneaEntrada()` rechaza
+que sea anterior a esa otra columna (el mismo día sí). La clave de tabla
+`calculadas` agrega al listado columnas que salen de otra tabla por una FK
+(`['tabla' => 'profesores', 'fk' => 'profesor_id', 'columna' => 'nombres',
+'etiqueta' => ...]`); se declaran también en `listar`, se pueden buscar y no se
+editan, exportan ni importan.
+
 Un campo de orden con `'al_final_de' => 'instrumento_id'` no se pide en el alta:
 `crear()` pone el siguiente número de ese grupo y el registro nuevo queda al
 final. Un alta también puede llegar con valores ya elegidos en la url,
