@@ -68,6 +68,12 @@ return [
     'alumno/admin' => [
         'archivo' => 'alumnos.php',
         'volver'  => 'alumno/admin',
+        // Importar crea o actualiza por matrícula; la contraseña es la genérica.
+        'acciones' => [
+            ['etiqueta' => 'Exportar CSV', 'params' => ['accion' => 'exportar', 'formato' => 'csv']],
+            ['etiqueta' => 'Exportar TXT', 'params' => ['accion' => 'exportar', 'formato' => 'txt']],
+            ['etiqueta' => 'Importar', 'params' => ['accion' => 'importar']],
+        ],
     ],
 
     'grupo/admin' => [
