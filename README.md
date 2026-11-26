@@ -370,6 +370,13 @@ correo institucional (`construirCorreoInstitucional()`), el estado elegido y el
 grupo "Alumno". Editar cambia la matrícula y con ella el usuario y el correo;
 eliminar borra el usuario y el alumno cae por `ON DELETE CASCADE`.
 
+Exportar e importar también viven en `alumnos.php` (no pasan por
+`tabla_crud.php`): exportar baja `matricula, usuario, correo, estado` (estado 1/0,
+sin hash ni auditoría) respetando la búsqueda; importar acepta `matricula` y
+`estado` (opcional), actualiza si la matrícula ya existe y crea las altas con la
+contraseña `PASSWORD_GENERICA`, igual que el formulario (usuario, grupo "Alumno",
+`creado_por`/`editado_por`).
+
 ## Componentes
 
 `src/components/` guarda las piezas de interfaz. Un componente **recibe props y
