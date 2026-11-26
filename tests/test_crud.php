@@ -243,6 +243,42 @@ assert(str_contains($fk['plan_id'], '`planes_estudio`') && str_contains($fk['pla
 assert(str_starts_with(clausulaWhere(['plan_id' => 'x'], $fk)['sql'], ' WHERE (SELECT d.`nombre`'));
 assert(clausulaWhere(['clave' => 'x'], $fk)['sql'] === clausulaWhere(['clave' => 'x'])['sql']);
 
+// Select fijo con 'texto_en_lista': el listado muestra y busca "Sí"/"No", no 1/0
+$fkCiclos = expresionesFk('ciclos_escolares', tablaConfig('ciclos_escolares'));
+assert(isset($fkCiclos['activo']) && !isset($fkCiclos['orden']));
+assert(str_starts_with($fkCiclos['activo'], 'CASE `ciclos_escolares`.`activo` WHEN \'1\' THEN \'Sí\''));
+assert(tablaConfig('ciclos_escolares')['campos']['activo']['etiqueta'] === 'Actual');
+assert(literalSql("a'b\\") === "'a''b\\\\'");
+
+// Columnas calculadas: el nombre del profesor de una carga, por su FK
+$cfgCarga = tablaConfig('cargas_academicas');
+$fkCarga  = expresionesFk('cargas_academicas', $cfgCarga);
+
+foreach (array_keys($cfgCarga['calculadas']) as $col) {
+    assert(in_array($col, $cfgCarga['listar'], true) && !isset($cfgCarga['campos'][$col]));
+    assert(str_contains($fkCarga[$col], '`profesores`') && str_contains($fkCarga[$col], '`cargas_academicas`.`profesor_id`'));
+}
+
+assert(!in_array('profesor_id', $cfgCarga['listar'], true));
+assert(array_keys(filtrosDesde($cfgCarga, ['profesor_apellido_paterno' => 'Pérez', 'profesor_id' => '1'])) === ['profesor_apellido_paterno']);
+
+// Fecha de fin: el mismo día o después pasa; antes de la de inicio, no
+$cfgEval = tablaConfig('evaluaciones');
+$baseEval = [
+    'fecha_inicio' => '2026-11-10', 'fecha_fin' => '2026-11-10', 'plan_id' => '1',
+    'ciclo_escolar_id' => '1', 'instrumento_id' => '1',
+];
+$cfgEvalSinFk = $cfgEval;
+
+foreach (['plan_id', 'ciclo_escolar_id', 'instrumento_id'] as $col) {
+    unset($cfgEvalSinFk['campos'][$col]['opciones_de']);
+}
+
+assert(saneaEntrada($cfgEvalSinFk, $baseEval, true)['fecha_fin'] === '2026-11-10');
+assert(saneaEntrada($cfgEvalSinFk, ['fecha_fin' => '2026-12-01'] + $baseEval, true)['fecha_fin'] === '2026-12-01');
+lanza('fecha de fin antes de la de inicio debe rechazarse',
+    static fn () => saneaEntrada($cfgEvalSinFk, ['fecha_fin' => '2026-11-09'] + $baseEval, true));
+
 // --- Columnas del panel de detalle ---
 
 // La contraseña de usuarios se excluye sola por su 'hash' => true: es lo único
