@@ -441,7 +441,7 @@ return [
 
     'asignaturas' => [
         'etiqueta' => 'Asignaturas',
-        'listar'   => ['id', 'clave', 'nombre', 'plan_id'],
+        'listar'   => ['id', 'clave', 'nombre', 'plan_id', 'comentarios'],
         'campos'   => [
             'clave' => [
                 'etiqueta'  => 'Clave',
@@ -470,7 +470,29 @@ return [
     // CRUD: se asignarán con una pantalla tipo asignar.php.
     'coordinadores' => [
         'etiqueta' => 'Coordinadores',
-        'listar'   => ['id', 'nombre', 'profesor_id'],
+        'listar'   => ['id', 'nombre', 'profesor_nombres', 'profesor_apellido_paterno', 'profesor_apellido_materno'],
+        // profesor_id sigue en el formulario y en el detalle (como clave); en el
+        // listado se ve con el nombre del profesor.
+        'calculadas' => [
+            'profesor_nombres' => [
+                'etiqueta' => 'Profesor (nombre)',
+                'tabla'    => 'profesores',
+                'fk'       => 'profesor_id',
+                'columna'  => 'nombres',
+            ],
+            'profesor_apellido_paterno' => [
+                'etiqueta' => 'Profesor (apellido paterno)',
+                'tabla'    => 'profesores',
+                'fk'       => 'profesor_id',
+                'columna'  => 'apellido_paterno',
+            ],
+            'profesor_apellido_materno' => [
+                'etiqueta' => 'Profesor (apellido materno)',
+                'tabla'    => 'profesores',
+                'fk'       => 'profesor_id',
+                'columna'  => 'apellido_materno',
+            ],
+        ],
         'campos'   => [
             'nombre' => [
                 'etiqueta'  => 'Cargo',
@@ -627,18 +649,17 @@ return [
 
     'comentarios' => [
         'etiqueta' => 'Comentarios',
-        'listar'   => ['id', 'evaluacion_id', 'ciclo_escolar_id', 'asignatura_id', 'profesor_id', 'clave_grupo', 'fecha'],
+        //'listar'   => ['id', 'evaluacion_id', 'ciclo_escolar_id', 'asignatura_id', 'profesor_id', 'clave_grupo', 'fecha'],
+        'listar'   => ['id', 'comentario', 'asignatura_id', 'profesor_id', 'fecha'],
         'campos'   => [
             'comentario' => [
                 'etiqueta'  => 'Comentario',
                 'tipo'      => 'textarea',
                 'requerido' => true,
             ],
-            // DATETIME: texto 'AAAA-MM-DD hh:mm:ss'. datetime-local pide una T
-            // en medio y no mostraría el valor guardado al editar.
             'fecha' => [
                 'etiqueta' => 'Fecha',
-                'tipo'     => 'text',
+                'tipo'     => 'date',
             ],
             'evaluacion_id' => [
                 'etiqueta'    => 'Evaluación',
@@ -664,10 +685,6 @@ return [
                 'requerido'   => true,
                 'opciones_de' => ['tabla' => 'profesores', 'muestra' => 'clave', 'guarda' => 'id'],
             ],
-            'clave_grupo' => [
-                'etiqueta' => 'Clave de grupo',
-                'tipo'     => 'text',
-            ],
         ],
     ],
 
@@ -685,10 +702,9 @@ return [
                 'etiqueta' => 'Respuesta',
                 'tipo'     => 'textarea',
             ],
-            // Igual que en comentarios: DATETIME como texto.
             'fecha' => [
                 'etiqueta' => 'Fecha',
-                'tipo'     => 'text',
+                'tipo'     => 'date',
             ],
             'evaluacion_id' => [
                 'etiqueta'    => 'Evaluación',
