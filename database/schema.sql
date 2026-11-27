@@ -329,10 +329,12 @@ CREATE TABLE IF NOT EXISTS selecciones (
 CREATE TABLE IF NOT EXISTS comentarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     comentario TEXT NOT NULL,
-    fecha DATETIME NULL,
+    fecha DATE NULL,
+    -- ¿Es necesario?  En el original no lo pide
     ciclo_escolar_id INT NOT NULL,
     asignatura_id INT NOT NULL,
     profesor_id INT UNSIGNED NOT NULL,
+    -- ¿Es necesario?  En el original no lo pide
     clave_grupo VARCHAR(10) NULL,
     evaluacion_id INT NOT NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -349,7 +351,7 @@ CREATE TABLE IF NOT EXISTS respuestas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     pregunta_id INT NOT NULL,
     respuesta VARCHAR(2048) NULL,
-    fecha DATETIME NULL,
+    fecha DATE NULL,
     ciclo_escolar_id INT NOT NULL,
     asignatura_id INT NOT NULL,
     profesor_id INT UNSIGNED NOT NULL,
